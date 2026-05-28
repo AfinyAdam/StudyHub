@@ -20,7 +20,7 @@ export const getUserProfile = async (uid: string) => {
 };
 
 export const updateUserProfile = async (uid: string, data: Partial<UserProfile>) => {
-  await updateDoc(doc(db, "users", uid), data);
+  await setDoc(doc(db, "users", uid), data, { merge: true });
 };
 
 // ─── Courses ─────────────────────────────────────────────────

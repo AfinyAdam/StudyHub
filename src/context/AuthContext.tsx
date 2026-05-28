@@ -7,17 +7,19 @@ import { auth, db } from "@/lib/firebase";
 import { UserProfile } from "@/types";
 
 interface AuthContextType {
-  user:    User | null;
-  profile: UserProfile | null;
-  loading: boolean;
-  logout:  () => Promise<void>;
+  user:           User | null;
+  profile:        UserProfile | null;
+  loading:        boolean;
+  logout:         () => Promise<void>;
+  refetchProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user:    null,
-  profile: null,
-  loading: true,
-  logout:  async () => {},
+  user:           null,
+  profile:        null,
+  loading:        true,
+  logout:         async () => {},
+  refetchProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -25,12 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (firebaseUser: User) => {
+    const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+    if (snap.exists()) setProfile(snap.data() as UserProfile);
+  };
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (snap.exists()) setProfile(snap.data() as UserProfile);
+        await fetchProfile(firebaseUser);
       } else {
         setProfile(null);
       }
@@ -39,6 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
+  const refetchProfile = async () => {
+    if (user) await fetchProfile(user);
+  };
+
   const logout = async () => {
     await signOut(auth);
     setUser(null);
@@ -46,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, logout, refetchProfile }}>
       {children}
     </AuthContext.Provider>
   );

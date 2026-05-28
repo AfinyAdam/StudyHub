@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
@@ -9,347 +9,482 @@ import {
 } from "@/lib/firestore";
 import { FocusNote, Course } from "@/types";
 import {
-  Plus, X, Trash2, Pencil, Save, Search,
-  FileText, BookOpen, Calendar,
+  Plus, Trash2, Search, FileText, BookOpen, ChevronDown, Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 
 const TODAY = new Date().toISOString().split("T")[0];
 
 const NOTE_COLORS = [
-  { label: "Blue",   value: "blue",   card: "bg-blue-50 border-blue-100",   tag: "bg-blue-100 text-blue-700"   },
-  { label: "Purple", value: "purple", card: "bg-purple-50 border-purple-100", tag: "bg-purple-100 text-purple-700" },
-  { label: "Green",  value: "green",  card: "bg-green-50 border-green-100",  tag: "bg-green-100 text-green-700"  },
-  { label: "Amber",  value: "amber",  card: "bg-amber-50 border-amber-100",  tag: "bg-amber-100 text-amber-700"  },
-  { label: "Pink",   value: "pink",   card: "bg-pink-50 border-pink-100",    tag: "bg-pink-100 text-pink-700"    },
-  { label: "White",  value: "white",  card: "bg-white border-gray-100",      tag: "bg-gray-100 text-gray-600"    },
+  { value: "default", dot: "bg-slate-300",  bar: "bg-slate-200",   card: "bg-white",       label: "Default" },
+  { value: "blue",    dot: "bg-blue-400",   bar: "bg-blue-400",    card: "bg-blue-50",     label: "Blue"    },
+  { value: "purple",  dot: "bg-purple-400", bar: "bg-purple-400",  card: "bg-purple-50",   label: "Purple"  },
+  { value: "green",   dot: "bg-green-400",  bar: "bg-green-400",   card: "bg-green-50",    label: "Green"   },
+  { value: "amber",   dot: "bg-amber-400",  bar: "bg-amber-400",   card: "bg-amber-50",    label: "Amber"   },
+  { value: "rose",    dot: "bg-rose-400",   bar: "bg-rose-400",    card: "bg-rose-50",     label: "Rose"    },
 ];
 
-const getColor = (val?: string) => NOTE_COLORS.find(c => c.value === val) ?? NOTE_COLORS[5];
+const getColor = (val?: string) => NOTE_COLORS.find(c => c.value === val) ?? NOTE_COLORS[0];
 
-// ─── Note Form Modal ──────────────────────────────────────────
-function NoteModal({
-  initial, courses, onClose, onSave,
-}: {
-  initial?: FocusNote & { courseId?: string; color?: string };
-  courses: Course[];
-  onClose: () => void;
-  onSave: (data: {
-    title: string; content: string; courseId: string;
-    date: string; color: string;
-  }) => Promise<void>;
-}) {
-  const [form, setForm] = useState({
-    title:    initial?.title    ?? "",
-    content:  initial?.content  ?? "",
-    courseId: (initial as any)?.courseId ?? "",
-    date:     initial?.date     ?? TODAY,
-    color:    (initial as any)?.color ?? "white",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const submit = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    if (!form.title.trim())   return toast.error("Title is required");
-    if (!form.content.trim()) return toast.error("Content is required");
-    setSaving(true);
-    try { await onSave(form); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">{initial ? "Edit Note" : "New Note"}</h2>
-            <p className="text-sm text-gray-400 mt-0.5">Capture your thoughts and learnings</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-            <X size={18} className="text-gray-400" />
-          </button>
-        </div>
-
-        <form onSubmit={submit} className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
-          {/* Title */}
-          <Input label="Title *" placeholder="e.g. Chapter 4 — Binary Trees"
-            value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
-
-          {/* Course + Date */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Course</label>
-              <select value={form.courseId} onChange={e => setForm(p => ({ ...p, courseId: e.target.value }))}
-                className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white">
-                <option value="">No course</option>
-                {courses.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-              </select>
-            </div>
-            <Input label="Date" type="date" value={form.date}
-              onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
-          </div>
-
-          {/* Color picker */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Color</label>
-            <div className="flex gap-2 flex-wrap">
-              {NOTE_COLORS.map(c => (
-                <button key={c.value} type="button" onClick={() => setForm(p => ({ ...p, color: c.value }))}
-                  className={`w-7 h-7 rounded-full border-2 transition-all ${
-                    form.color === c.value ? "border-blue-500 scale-110" : "border-transparent"
-                  } ${c.card}`}
-                  title={c.label}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Content *</label>
-            <textarea rows={10} placeholder="Write your notes here…"
-              value={form.content}
-              onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-              className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none leading-relaxed"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-1 shrink-0">
-            <Button type="button" variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
-            <Button type="submit" fullWidth loading={saving}>
-              <Save size={15} /> {initial ? "Save Changes" : "Create Note"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+function wordCount(text: string) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
 }
 
-// ─── View Modal ───────────────────────────────────────────────
-function NoteViewModal({
-  note, courses, onClose, onEdit, onDelete,
-}: {
-  note: FocusNote & { courseId?: string; color?: string };
-  courses: Course[];
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const course = courses.find(c => c.id === note.courseId);
-  const col = getColor(note.color);
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] border ${col.card}`}>
-        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-black/5 shrink-0">
-          <div className="flex-1 min-w-0 pr-4">
-            <h2 className="text-xl font-bold text-gray-900 leading-snug">{note.title}</h2>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {course && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${col.tag}`}>{course.code}</span>
-              )}
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <Calendar size={11} />
-                {new Date(note.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onEdit}
-              className="w-8 h-8 rounded-xl bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors">
-              <Pencil size={14} />
-            </button>
-            <button onClick={onDelete}
-              className="w-8 h-8 rounded-xl bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-500 transition-colors">
-              <Trash2 size={14} />
-            </button>
-            <button onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors ml-1">
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-        <div className="px-6 py-5 overflow-y-auto flex-1">
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{note.content}</p>
-        </div>
-      </div>
-    </div>
-  );
+function relativeDate(iso: string) {
+  const d    = new Date(iso);
+  const now  = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff < 7)  return `${diff}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ─── Page ─────────────────────────────────────────────────────
+function groupNotes(notes: Note[]) {
+  const today     = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const weekAgo   = new Date(today); weekAgo.setDate(today.getDate() - 7);
+
+  const groups: { label: string; notes: Note[] }[] = [
+    { label: "Today",     notes: [] },
+    { label: "Yesterday", notes: [] },
+    { label: "This Week", notes: [] },
+    { label: "Earlier",   notes: [] },
+  ];
+
+  for (const n of notes) {
+    const d    = new Date((n as any).updatedAt ?? n.date);
+    const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
+    if (diff === 0)      groups[0].notes.push(n);
+    else if (diff === 1) groups[1].notes.push(n);
+    else if (diff < 7)  groups[2].notes.push(n);
+    else                groups[3].notes.push(n);
+  }
+
+  return groups.filter(g => g.notes.length > 0);
+}
+
+type Note = FocusNote & { courseId?: string; color?: string };
+
 export default function NotesPage() {
-  const { user } = useAuth();
-  const [notes,    setNotes]    = useState<(FocusNote & { courseId?: string; color?: string })[]>([]);
-  const [courses,  setCourses]  = useState<Course[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [showNew,  setShowNew]  = useState(false);
-  const [editing,  setEditing]  = useState<(FocusNote & { courseId?: string; color?: string }) | null>(null);
-  const [viewing,  setViewing]  = useState<(FocusNote & { courseId?: string; color?: string }) | null>(null);
-  const [search,   setSearch]   = useState("");
-  const [filterCourse, setFilterCourse] = useState("all");
-  const [filterColor,  setFilterColor]  = useState("all");
+  const { user, profile } = useAuth();
 
-  const load = async () => {
+  const [notes,        setNotes]        = useState<Note[]>([]);
+  const [courses,      setCourses]      = useState<Course[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState("");
+  const [filterCourse, setFilterCourse] = useState("all");
+
+  const [selected,  setSelected]  = useState<Note | null>(null);
+  const [title,     setTitle]     = useState("");
+  const [content,   setContent]   = useState("");
+  const [courseId,  setCourseId]  = useState("");
+  const [date,      setDate]      = useState(TODAY);
+  const [color,     setColor]     = useState("default");
+  const [saving,    setSaving]    = useState(false);
+  const [dirty,     setDirty]     = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  const contentRef  = useRef<HTMLTextAreaElement>(null);
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedRef = useRef<Note | null>(null);
+  selectedRef.current = selected;
+
+  const load = useCallback(async () => {
     if (!user) return;
     try {
-      const [n, c] = await Promise.all([getFocusNotes(user.uid), getUserCourses(user.uid)]);
-      setNotes(n as any);
+      const [n, c] = await Promise.all([
+        getFocusNotes(user.uid),
+        getUserCourses(user.uid, profile?.classId),
+      ]);
+      setNotes(n as Note[]);
       setCourses(c);
-    } catch (err) { console.error(err); }
+    } catch { /* silent */ }
     finally { setLoading(false); }
+  }, [user, profile?.classId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Auto-grow textarea
+  useEffect(() => {
+    const ta = contentRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [content]);
+
+  // Auto-save after 1.5s of inactivity
+  const triggerAutoSave = useCallback((
+    t: string, c: string, cId: string, d: string, col: string
+  ) => {
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(async () => {
+      if (!t.trim()) return;
+      const now  = new Date().toISOString();
+      const data = { title: t.trim(), content: c, courseId: cId, date: d, color: col };
+      try {
+        const cur = selectedRef.current;
+        if (cur) {
+          await updateFocusNote(cur.id, { ...data, updatedAt: now });
+        } else {
+          await saveFocusNote({ userId: user!.uid, ...data, createdAt: now, updatedAt: now } as any);
+        }
+        setDirty(false);
+        setLastSaved(new Date());
+        await load();
+      } catch { /* silent auto-save fail */ }
+    }, 1500);
+  }, [user, load]);
+
+  const openNote = (note: Note) => {
+    setSelected(note);
+    setTitle(note.title);
+    setContent(note.content);
+    setCourseId(note.courseId ?? "");
+    setDate(note.date);
+    setColor((note as any).color ?? "default");
+    setDirty(false);
+    setLastSaved(null);
+    setIsEditing(true);
   };
 
-  useEffect(() => { load(); }, [user]);
-
-  const handleSave = async (data: { title: string; content: string; courseId: string; date: string; color: string }) => {
-    const now = new Date().toISOString();
-    if (editing) {
-      await updateFocusNote(editing.id, { ...data, updatedAt: now });
-      toast.success("Note updated!");
-      setEditing(null);
-      setViewing(null);
-    } else {
-      await saveFocusNote({ userId: user!.uid, ...data, createdAt: now, updatedAt: now } as any);
-      toast.success("Note created!");
-      setShowNew(false);
-    }
-    load();
+  const newNote = () => {
+    setSelected(null);
+    setTitle("");
+    setContent("");
+    setCourseId("");
+    setDate(TODAY);
+    setColor("default");
+    setDirty(false);
+    setLastSaved(null);
+    setIsEditing(true);
+    setTimeout(() => document.getElementById("note-title")?.focus(), 50);
   };
 
-  const handleDelete = async (note: FocusNote) => {
-    if (!confirm(`Delete "${note.title}"?`)) return;
+  const handleSave = useCallback(async (
+    t = title, c = content, cId = courseId, d = date, col = color
+  ) => {
+    if (!t.trim()) return toast.error("Title is required");
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    setSaving(true);
+    const now  = new Date().toISOString();
+    const data = { title: t.trim(), content: c, courseId: cId, date: d, color: col };
     try {
-      await deleteFocusNote(note.id);
-      toast.success("Note deleted!");
-      setViewing(null);
-      load();
+      if (selectedRef.current) {
+        await updateFocusNote(selectedRef.current.id, { ...data, updatedAt: now });
+        toast.success("Saved");
+      } else {
+        await saveFocusNote({ userId: user!.uid, ...data, createdAt: now, updatedAt: now } as any);
+        toast.success("Note created");
+      }
+      setDirty(false);
+      setLastSaved(new Date());
+      await load();
+    } catch { toast.error("Failed to save"); }
+    finally { setSaving(false); }
+  }, [title, content, courseId, date, color, user, load]);
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    if (!confirm(`Delete "${selected.title}"?`)) return;
+    try {
+      await deleteFocusNote(selected.id);
+      toast.success("Deleted");
+      setSelected(null); setTitle(""); setContent("");
+      setIsEditing(false);
+      await load();
     } catch { toast.error("Failed to delete"); }
   };
+
+  // Cmd+S save
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (isEditing) handleSave();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isEditing, handleSave]);
 
   const filtered = notes
     .filter(n => {
       const q = search.toLowerCase();
-      const matchSearch = !q || n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q);
-      const matchCourse = filterCourse === "all" || n.courseId === filterCourse;
-      const matchColor  = filterColor  === "all" || (n as any).color === filterColor;
-      return matchSearch && matchCourse && matchColor;
+      return (!q || n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
+        && (filterCourse === "all" || n.courseId === filterCourse);
     })
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => ((b as any).updatedAt ?? b.date).localeCompare((a as any).updatedAt ?? a.date));
+
+  const grouped   = groupNotes(filtered);
+  const col       = getColor(color);
+  const hasEditor = isEditing;
 
   return (
-    <DashboardLayout>
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notes</h1>
-          <p className="text-gray-500 text-sm mt-1">{notes.length} note{notes.length !== 1 ? "s" : ""} saved</p>
-        </div>
-        <Button onClick={() => setShowNew(true)}>
-          <Plus size={16} /> New Note
-        </Button>
-      </div>
+    <DashboardLayout noPadding>
+      <div className="flex h-[calc(100vh-45px)] overflow-hidden" style={{ background: "#faf8f3" }}>
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input placeholder="Search notes…" value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 bg-white" />
-        </div>
-        {courses.length > 0 && (
-          <select value={filterCourse} onChange={e => setFilterCourse(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 bg-white text-gray-600">
-            <option value="all">All Courses</option>
-            {courses.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-          </select>
-        )}
-        <select value={filterColor} onChange={e => setFilterColor(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 bg-white text-gray-600">
-          <option value="all">All Colors</option>
-          {NOTE_COLORS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-        </select>
-      </div>
+        {/* ── Sidebar ────────────────────────────────────────────── */}
+        <div className="w-72 shrink-0 flex flex-col border-r border-[#e8e4da]"
+          style={{ background: "#f5f2ec" }}>
 
-      {/* Notes grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-28 text-center">
-          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
-            <FileText className="w-8 h-8 text-blue-400" />
+          {/* Header */}
+          <div className="px-4 pt-4 pb-3 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <FileText size={14} className="text-slate-500" />
+              <span className="font-bold text-slate-800 text-[14px]">Notes</span>
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-[#e8e4da] text-slate-500 font-semibold leading-none">
+                {notes.length}
+              </span>
+            </div>
+            <button onClick={newNote}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
+              style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+              <Plus size={13} /> New
+            </button>
           </div>
-          <h3 className="font-semibold text-gray-800 mb-1">
-            {search || filterCourse !== "all" ? "No notes match your search" : "No notes yet"}
-          </h3>
-          <p className="text-sm text-gray-400 mb-5">Create your first note to start building your knowledge base.</p>
-          <Button onClick={() => setShowNew(true)}><Plus size={16} /> Create First Note</Button>
+
+          {/* Search */}
+          <div className="px-3 pb-2 shrink-0">
+            <div className="relative">
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search notes…"
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-white border border-[#e0dbd2] text-[12px] outline-none focus:border-[#0e3326] focus:ring-1 focus:ring-[rgba(14,51,38,0.1)] placeholder-slate-400 transition-all" />
+            </div>
+          </div>
+
+          {/* Course filter */}
+          {courses.length > 0 && (
+            <div className="px-3 pb-3 shrink-0">
+              <div className="relative">
+                <BookOpen size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select value={filterCourse} onChange={e => setFilterCourse(e.target.value)}
+                  className="w-full pl-8 pr-6 py-2 rounded-xl bg-white border border-[#e0dbd2] text-[12px] outline-none focus:border-[#0e3326] text-slate-600 appearance-none cursor-pointer">
+                  <option value="all">All courses</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+                </select>
+                <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Note list */}
+          <div className="flex-1 overflow-y-auto pb-4 sidebar-scroll">
+            {loading ? (
+              <div className="space-y-2 px-3">
+                {[1,2,3,4].map(i => <div key={i} className="h-16 bg-[#ece8e1] rounded-xl animate-pulse" />)}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-[#e8e4da] flex items-center justify-center">
+                  <FileText size={20} className="text-slate-400" />
+                </div>
+                <p className="text-[12px] font-medium text-slate-500">
+                  {search ? "No matching notes" : "No notes yet"}
+                </p>
+                {!search && (
+                  <button onClick={newNote}
+                    className="text-[12px] font-semibold hover:underline mt-1" style={{ color: "#0e3326" }}>
+                    Create your first note →
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="px-2">
+                {grouped.map(group => (
+                  <div key={group.label}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 pt-4 pb-1.5">
+                      {group.label}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {group.notes.map(note => {
+                        const nc       = getColor((note as any).color);
+                        const course   = courses.find(c => c.id === note.courseId);
+                        const isActive = selected?.id === note.id;
+                        const preview  = note.content.replace(/\n+/g, " ").slice(0, 60);
+                        return (
+                          <li key={note.id}>
+                            <button onClick={() => openNote(note)}
+                              className={`w-full text-left rounded-xl transition-all duration-150 overflow-hidden ${
+                                isActive ? "shadow-sm" : "hover:bg-[#ece8e1]"
+                              }`}
+                              style={isActive
+                                ? { background: "linear-gradient(135deg, #0e3326, #175c3a)" }
+                                : {}}>
+                              <div className="flex items-stretch">
+                                {/* Color bar */}
+                                <div className={`w-1 shrink-0 rounded-l-xl ${nc.bar} ${isActive ? "opacity-60" : ""}`} />
+                                <div className="flex-1 px-3 py-2.5 min-w-0">
+                                  <p className={`text-[13px] font-semibold truncate leading-tight ${isActive ? "text-white" : "text-slate-800"}`}>
+                                    {note.title}
+                                  </p>
+                                  {preview && (
+                                    <p className={`text-[11px] mt-0.5 truncate leading-snug ${isActive ? "text-white/50" : "text-slate-400"}`}>
+                                      {preview}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-1.5 mt-1.5">
+                                    {course && (
+                                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                                        isActive ? "bg-white/15 text-white/70" : "bg-[#e8e4da] text-slate-500"
+                                      }`}>
+                                        {course.code}
+                                      </span>
+                                    )}
+                                    <span className={`text-[10px] ml-auto shrink-0 ${isActive ? "text-white/40" : "text-slate-400"}`}>
+                                      {relativeDate((note as any).updatedAt ?? note.date)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(note => {
-            const col    = getColor((note as any).color);
-            const course = courses.find(c => c.id === note.courseId);
-            return (
-              <div key={note.id}
-                onClick={() => setViewing(note)}
-                className={`rounded-2xl border p-5 cursor-pointer hover:shadow-md transition-all group flex flex-col min-h-[160px] ${col.card}`}>
-                {/* Title */}
-                <h3 className="font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">{note.title}</h3>
-                {/* Content preview */}
-                <p className="text-sm text-gray-500 line-clamp-3 flex-1 leading-relaxed whitespace-pre-wrap">{note.content}</p>
-                {/* Footer */}
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-black/5">
-                  <div className="flex items-center gap-1.5">
-                    {course && (
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${col.tag}`}>{course.code}</span>
-                    )}
+
+        {/* ── Editor ─────────────────────────────────────────────── */}
+        <div className={`flex-1 flex flex-col overflow-hidden transition-colors duration-300 ${hasEditor ? col.card : "bg-white"}`}>
+          {!hasEditor ? (
+            /* Empty / welcome state */
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center p-8">
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center shadow-sm"
+                style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                <FileText size={32} className="text-white/80" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-700 text-lg">Your notes live here</p>
+                <p className="text-sm text-slate-400 mt-1 max-w-xs">
+                  Select a note from the sidebar or start a new one. Notes auto-save as you type.
+                </p>
+              </div>
+              <button onClick={newNote}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
+                style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                <Plus size={15} /> New Note
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Toolbar */}
+              <div className="shrink-0 flex items-center gap-3 px-6 py-3 border-b border-black/[0.06] bg-white/50 backdrop-blur-sm">
+
+                {/* Color swatches */}
+                <div className="flex items-center gap-1.5 pr-3 border-r border-black/[0.07]">
+                  {NOTE_COLORS.map(c => (
+                    <button key={c.value} type="button"
+                      onClick={() => { setColor(c.value); setDirty(true); triggerAutoSave(title, content, courseId, date, c.value); }}
+                      title={c.label}
+                      className={`w-4.5 h-4.5 rounded-full border-2 transition-all ${c.dot} ${
+                        color === c.value ? "border-slate-600 scale-125 shadow-sm" : "border-transparent hover:scale-110"
+                      }`}
+                      style={{ width: 18, height: 18 }} />
+                  ))}
+                </div>
+
+                {/* Course selector */}
+                <div className="relative">
+                  <select value={courseId}
+                    onChange={e => { setCourseId(e.target.value); setDirty(true); triggerAutoSave(title, content, e.target.value, date, color); }}
+                    className="text-[12px] text-slate-500 bg-transparent border-none outline-none cursor-pointer pr-5 appearance-none font-medium">
+                    <option value="">No course</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
+                  </select>
+                  <ChevronDown size={10} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+
+                <span className="text-slate-200 text-sm">·</span>
+
+                {/* Date */}
+                <input type="date" value={date}
+                  onChange={e => { setDate(e.target.value); setDirty(true); triggerAutoSave(title, content, courseId, e.target.value, color); }}
+                  className="text-[12px] text-slate-500 bg-transparent border-none outline-none cursor-pointer font-medium" />
+
+                {/* Right actions */}
+                <div className="flex items-center gap-2 ml-auto">
+                  {/* Auto-save status */}
+                  <div className="flex items-center gap-1 text-[11px]">
+                    {saving ? (
+                      <><span className="w-3 h-3 border border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+                      <span className="text-slate-400">Saving…</span></>
+                    ) : lastSaved ? (
+                      <><Clock size={11} className="text-slate-300" />
+                      <span className="text-slate-400">Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></>
+                    ) : dirty ? (
+                      <span className="text-amber-500 font-medium">Unsaved</span>
+                    ) : null}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
-                      {new Date(note.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                    {/* Action buttons — visible on hover */}
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={e => e.stopPropagation()}>
-                      <button onClick={() => { setEditing(note); setViewing(null); }}
-                        className="w-6 h-6 rounded-lg bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-600 transition-colors">
-                        <Pencil size={11} />
-                      </button>
-                      <button onClick={() => handleDelete(note)}
-                        className="w-6 h-6 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-500 transition-colors">
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </div>
+
+                  {selected && (
+                    <button onClick={handleDelete}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-500 transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+
+                  <button onClick={() => handleSave()} disabled={saving}
+                    className="px-3.5 py-1.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                    Save
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Modals */}
-      {showNew && (
-        <NoteModal courses={courses} onClose={() => setShowNew(false)} onSave={handleSave} />
-      )}
-      {editing && (
-        <NoteModal initial={editing} courses={courses} onClose={() => setEditing(null)} onSave={handleSave} />
-      )}
-      {viewing && !editing && (
-        <NoteViewModal
-          note={viewing}
-          courses={courses}
-          onClose={() => setViewing(null)}
-          onEdit={() => { setEditing(viewing); setViewing(null); }}
-          onDelete={() => handleDelete(viewing)}
-        />
-      )}
+              {/* Title */}
+              <div className="px-10 pt-8 pb-1 shrink-0">
+                <input
+                  id="note-title"
+                  value={title}
+                  onChange={e => {
+                    setTitle(e.target.value);
+                    setDirty(true);
+                    triggerAutoSave(e.target.value, content, courseId, date, color);
+                  }}
+                  placeholder="Untitled"
+                  className="w-full text-[28px] font-bold text-slate-900 bg-transparent border-none outline-none placeholder-slate-300 leading-tight"
+                />
+                <div className="mt-2 h-px w-full" style={{ background: "rgba(0,0,0,0.05)" }} />
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-10 pt-4 pb-8">
+                <textarea
+                  ref={contentRef}
+                  value={content}
+                  onChange={e => {
+                    setContent(e.target.value);
+                    setDirty(true);
+                    triggerAutoSave(title, e.target.value, courseId, date, color);
+                  }}
+                  placeholder="Start writing…"
+                  className="w-full bg-transparent border-none outline-none text-[15px] text-slate-700 leading-[1.85] resize-none placeholder-slate-300 min-h-[300px]"
+                  style={{ height: "auto" }}
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="shrink-0 px-10 py-2.5 border-t border-black/[0.05] flex items-center gap-4">
+                <p className="text-[11px] text-slate-400">
+                  {wordCount(content)} word{wordCount(content) !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[11px] text-slate-300">·</p>
+                <p className="text-[11px] text-slate-400">
+                  {content.length} character{content.length !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[11px] text-slate-300 ml-auto">⌘S to save</p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </DashboardLayout>
   );
 }

@@ -10,7 +10,7 @@ import {
 import { Announcement } from "@/types";
 import {
   BookOpen, CheckSquare, TrendingUp, Calendar,
-  Clock, ArrowRight, Flame, Star,
+  Clock, ArrowRight, Flame, Star, X,
   MapPin, ChevronRight, AlertTriangle, Wallet, BookMarked, Bell, GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
@@ -80,7 +80,7 @@ function StatCard({ href, icon: Icon, value, label, color, loading }: {
 }) {
   return (
     <Link href={href}
-      className="group relative bg-white rounded-xl p-4 border border-[#e4e4dc] hover:border-slate-300 hover:shadow-sm transition-all duration-200">
+      className="group relative bg-white rounded-xl p-4 border border-[#e4e4dc] hover:border-slate-300 card-lift transition-all duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color.bg }}>
           <Icon className="w-4 h-4" style={{ color: color.text }} />
@@ -105,7 +105,7 @@ function Card({ title, href, linkLabel = "See all", icon: Icon, iconBg, iconColo
   skeleton?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl p-5 border border-[#e4e4dc]">
+    <div className="bg-white rounded-xl p-5 border border-[#e4e4dc] card-lift">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${iconBg}`}>
@@ -113,7 +113,7 @@ function Card({ title, href, linkLabel = "See all", icon: Icon, iconBg, iconColo
           </div>
           <h2 className="font-semibold text-slate-800 text-sm">{title}</h2>
         </div>
-        <Link href={href} className="flex items-center gap-0.5 text-[11px] text-blue-500 hover:text-blue-700 font-medium">
+        <Link href={href} className="flex items-center gap-0.5 text-[11px] font-medium hover:underline" style={{ color: "#0e3326" }}>
           {linkLabel} <ArrowRight size={11} />
         </Link>
       </div>
@@ -138,6 +138,10 @@ export default function DashboardPage() {
   const [dismissedAnn,  setDismissedAnn]  = useState<string | null>(null);
   const [joinCode,      setJoinCode]      = useState("");
   const [joining,       setJoining]       = useState(false);
+  const [soloMode,      setSoloMode]      = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("unilife_solo_mode") === "1";
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -269,29 +273,38 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── Join class prompt (students without a class) ──── */}
-      {!loading && !profile?.classId && profile?.role !== "admin" && (
-        <div className="mb-5 px-5 py-4 rounded-xl border border-amber-200 bg-amber-50">
-          <div className="flex items-start gap-3">
-            <GraduationCap size={16} className="text-amber-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-900">You haven't joined a class yet</p>
-              <p className="text-xs text-amber-700 mt-0.5 mb-3">Enter the join code from your class rep to see your official courses and announcements.</p>
-              <form onSubmit={handleJoinClass} className="flex gap-2">
-                <input
-                  value={joinCode}
-                  onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                  placeholder="Join code (e.g. CS2024)"
-                  maxLength={8}
-                  className="flex-1 px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm font-mono uppercase tracking-widest outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-                />
-                <button type="submit" disabled={joining || !joinCode.trim()}
-                  className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors disabled:opacity-50">
-                  {joining ? "Joining…" : "Join"}
-                </button>
-              </form>
-            </div>
-          </div>
+      {/* ── Admin setup banner ────────────────────────────── */}
+      {!loading && profile?.role === "admin" && !profile?.classId && (
+        <div className="mb-5 flex items-center gap-3 px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 flex-wrap">
+          <GraduationCap size={16} className="text-slate-500 shrink-0" />
+          <p className="text-sm text-slate-600 flex-1">Class not set up yet. Create your class so students can join.</p>
+          <a href="/admin" className="text-sm font-medium text-slate-900 hover:underline shrink-0">Go to Admin Panel →</a>
+        </div>
+      )}
+
+      {/* ── No-class banner ───────────────────────────────── */}
+      {!loading && !profile?.classId && profile?.role !== "admin" && !soloMode && (
+        <div className="mb-5 flex items-center gap-4 px-4 py-3.5 rounded-xl border border-[#e4e4dc] bg-white flex-wrap">
+          <GraduationCap size={16} className="text-slate-400 shrink-0" />
+          <p className="text-sm text-slate-600 flex-1">You're not in a class yet. Enter your join code to get started.</p>
+          <form onSubmit={handleJoinClass} className="flex gap-2 shrink-0">
+            <input
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Join code"
+              maxLength={8}
+              className="w-28 px-3 py-1.5 rounded-lg border border-[#e8e4da] text-sm font-mono uppercase tracking-widest outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)]"
+            />
+            <button type="submit" disabled={joining || !joinCode.trim()}
+              className="px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all hover:brightness-110 disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, #0e3326, #0f4535)" }}>
+              {joining ? "…" : "Join"}
+            </button>
+          </form>
+          <button onClick={() => { setSoloMode(true); localStorage.setItem("unilife_solo_mode", "1"); }}
+            className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+            <X size={15} />
+          </button>
         </div>
       )}
 
@@ -332,7 +345,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Top stat row ──────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 stagger">
         <StatCard href="/courses"    icon={BookOpen}    value={loading ? "—" : courses.length}        label="Courses"         loading={loading}
           color={{ text: "#2563eb", bg: "#eff6ff", accent: "linear-gradient(90deg,#3b82f6,#6366f1)" }} />
         <StatCard href="/tasks"      icon={CheckSquare} value={loading ? "—" : pendingTasks.length}   label="Pending Tasks"   loading={loading}
@@ -427,7 +440,7 @@ export default function DashboardPage() {
           {upcomingTasks.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <p className="text-sm text-slate-500">No pending tasks</p>
-              <Link href="/tasks" className="text-blue-600 text-xs font-medium hover:underline mt-1">Add a task</Link>
+              <Link href="/tasks" className="text-xs font-medium hover:underline mt-1" style={{ color: "#0e3326" }}>Add a task</Link>
             </div>
           ) : (
             <ul className="space-y-1">
@@ -472,7 +485,7 @@ export default function DashboardPage() {
           {budget === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <p className="text-sm text-slate-500">No budget set</p>
-              <Link href="/profile" className="text-blue-600 text-xs font-medium hover:underline mt-1">Set monthly budget</Link>
+              <Link href="/profile" className="text-xs font-medium hover:underline mt-1" style={{ color: "#0e3326" }}>Set monthly budget</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -521,7 +534,7 @@ export default function DashboardPage() {
           {upcoming.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <p className="text-sm text-slate-500">No upcoming events</p>
-              <Link href="/events" className="text-blue-600 text-xs font-medium hover:underline mt-1">Browse events</Link>
+              <Link href="/events" className="text-xs font-medium hover:underline mt-1" style={{ color: "#0e3326" }}>Browse events</Link>
             </div>
           ) : (
             <ul className="space-y-2">

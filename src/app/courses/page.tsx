@@ -87,9 +87,10 @@ function WeeklyTimetable({
       <div className="flex border-b border-[#e4e4dc]" style={{ paddingLeft: GUTTER_W }}>
         {visibleDays.map(d => (
           <div key={d} className="flex-1 py-2.5 text-center border-l border-[#e4e4dc] first:border-l-0">
-            <span className={`inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
-              d === todayShort ? "bg-slate-900 text-white" : "text-slate-400"
-            }`}>{d}</span>
+            <span className="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg"
+              style={d === todayShort
+                ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", color: "#fff" }
+                : { color: "#94a3b8" }}>{d}</span>
           </div>
         ))}
       </div>
@@ -314,9 +315,10 @@ function CourseModal({ initial, onClose, onSave, saving }: {
             <div className="flex gap-2 flex-wrap">
               {DAYS.map(d => (
                 <button key={d} type="button" onClick={() => toggleDay(d)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
-                    form.days.includes(d) ? "bg-slate-900 text-white border-slate-900" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                  }`}>{d}</button>
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+                  style={form.days.includes(d)
+                    ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", color: "#fff", borderColor: "transparent" }
+                    : { background: "#fff", color: "#475569", borderColor: "#e8e4da" }}>{d}</button>
               ))}
             </div>
           </div>
@@ -344,12 +346,12 @@ function CourseModal({ initial, onClose, onSave, saving }: {
 // ─── Page ────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { user, profile } = useAuth();
-  const [courses,   setCourses]   = useState<Course[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [saving,    setSaving]    = useState(false);
+  const [courses,  setCourses]  = useState<Course[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [editing,   setEditing]   = useState<Course | null>(null);
-  const [now,       setNow]       = useState(new Date());
+  const [editing,    setEditing]    = useState<Course | null>(null);
+  const [now,        setNow]        = useState(new Date());
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -416,8 +418,8 @@ export default function SchedulePage() {
             <BookOpen className="w-8 h-8 text-slate-400" />
           </div>
           <h2 className="text-base font-semibold text-gray-800 mb-1">No courses yet</h2>
-          <p className="text-gray-400 text-sm mb-5 max-w-xs">Add your courses to build your weekly schedule.</p>
-          <Button onClick={openAdd}><Plus size={16} /> Add Your First Course</Button>
+          <p className="text-gray-400 text-sm mb-5 max-w-xs">Add your courses to build your weekly timetable.</p>
+          <Button onClick={openAdd}><Plus size={16} /> Add Course</Button>
         </div>
       ) : (
         <>

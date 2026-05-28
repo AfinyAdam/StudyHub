@@ -14,24 +14,30 @@ export default function Button({
   fullWidth = false,
   className,
   disabled,
+  style,
   ...props
 }: ButtonProps) {
+  const isPrimary = variant === "primary";
   return (
     <button
       disabled={disabled || loading}
       className={clsx(
-        "flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200",
+        "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200",
         fullWidth && "w-full",
-        variant === "primary"   && "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50",
-        variant === "secondary" && "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50",
-        variant === "danger"    && "bg-red-500 text-white hover:bg-red-600 disabled:opacity-50",
-        variant === "ghost"     && "bg-transparent text-blue-600 hover:bg-blue-50 disabled:opacity-50",
+        isPrimary   && "text-white hover:brightness-110 active:scale-[0.97] disabled:opacity-50",
+        variant === "secondary" && "bg-white text-slate-700 border border-[#e8e4da] hover:bg-[#f5f0e8] active:scale-[0.97] disabled:opacity-50",
+        variant === "danger"    && "bg-red-500 text-white hover:bg-red-600 active:scale-[0.97] disabled:opacity-50",
+        variant === "ghost"     && "bg-transparent hover:bg-[rgba(14,51,38,0.06)] active:scale-[0.97] disabled:opacity-50",
         className
       )}
+      style={isPrimary ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", ...style } : style}
       {...props}
     >
       {loading ? (
-        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        <span className={clsx(
+          "w-4 h-4 border-2 border-t-transparent rounded-full animate-spin",
+          isPrimary ? "border-white/30 border-t-white" : "border-slate-300 border-t-slate-600"
+        )} />
       ) : children}
     </button>
   );

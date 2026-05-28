@@ -17,4 +17,9 @@ export const auth           = getAuth(app);
 export const db             = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
+export const getStorage = async () => {
+  const { getStorage: gs } = await import("firebase/storage");
+  return gs(app);
+};
+
 export default app;

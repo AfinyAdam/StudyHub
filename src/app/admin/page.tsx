@@ -6,11 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { Announcement, Course, AttendanceRecord, Class } from "@/types";
+import { Announcement, Course, AttendanceRecord, Class, Event } from "@/types";
 import {
   ShieldCheck, Megaphone, Trash2, Pin, Users, Calendar,
   Bell, BookOpen, Plus, ChevronDown, ChevronUp, X, Copy, GraduationCap,
-  ClipboardCheck, UserMinus, TrendingUp,
+  ClipboardCheck, UserMinus, TrendingUp, MapPin, Clock, CheckCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -34,7 +34,7 @@ const BLANK_COURSE = {
   days: [] as string[], color: "blue", description: "",
 };
 
-type Tab = "announcements" | "courses" | "attendance" | "students";
+type Tab = "announcements" | "courses" | "attendance" | "students" | "events";
 
 // ─── Attendance status badge ──────────────────────────────────
 const STATUS_STYLES: Record<string, string> = {
@@ -84,6 +84,15 @@ export default function AdminPage() {
   const [roleUpdating, setRoleUpdating]       = useState<string | null>(null);
   const [studentSearch, setStudentSearch]     = useState("");
 
+  // Events
+  const [classEvents, setClassEvents]         = useState<Event[]>([]);
+  const [eventForm, setEventForm]             = useState({ title: "", description: "", eventDate: "", location: "" });
+  const [eventSaving, setEventSaving]         = useState(false);
+  const [showEventForm, setShowEventForm]     = useState(false);
+
+  // Approved request pre-fill
+  const [approvedRequest, setApprovedRequest] = useState<any>(null);
+
   useEffect(() => {
     if (!authLoading && profile && profile.role !== "admin") router.replace("/dashboard");
   }, [authLoading, profile, router]);
@@ -94,6 +103,18 @@ export default function AdminPage() {
       const res = await apiFetch("/api/classes");
       const data = res.ok ? await res.json() : null;
       setMyClass(data);
+      // If no class yet, fetch approved request to pre-fill the form
+      if (!data) {
+        const rRes = await apiFetch("/api/admin-requests/my");
+        if (rRes.ok) {
+          const reqs = await rRes.json();
+          const approved = reqs.find((r: any) => r.status === "approved");
+          if (approved) {
+            setApprovedRequest(approved);
+            setClassForm({ name: approved.className, major: approved.major, joinCode: "" });
+          }
+        }
+      }
     } catch { setMyClass(null); }
     finally { setClassLoading(false); }
   };
@@ -114,6 +135,8 @@ export default function AdminPage() {
       ]);
       setAnnouncements(Array.isArray(a) ? a : []);
       setOfficialCourses(Array.isArray(c) ? c : []);
+      const events = (Array.isArray(e) ? e : []).filter((ev: any) => ev.isClassWide);
+      setClassEvents(events);
       const users = Array.isArray(u) ? u : [];
       setAllStudents(users);
       setStats({ students: users.length, events: Array.isArray(e) ? e.length : 0 });
@@ -212,6 +235,34 @@ export default function AdminPage() {
     finally { setClassSaving(false); }
   };
 
+  // ── Class-wide events ─────────────────────────────────────
+  const handlePostEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventForm.title.trim() || !eventForm.eventDate) return toast.error("Title and date are required");
+    setEventSaving(true);
+    try {
+      const res = await apiFetch("/api/events", {
+        method: "POST",
+        body: JSON.stringify({ ...eventForm, isClassWide: true }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Event posted to class!");
+      setEventForm({ title: "", description: "", eventDate: "", location: "" });
+      setShowEventForm(false);
+      load();
+    } catch { toast.error("Failed to post event"); }
+    finally { setEventSaving(false); }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm("Delete this event?")) return;
+    try {
+      await apiFetch(`/api/events/${id}`, { method: "DELETE" });
+      toast.success("Event deleted");
+      setClassEvents(prev => prev.filter(ev => ev.id !== id));
+    } catch { toast.error("Failed to delete event"); }
+  };
+
   // ── Admin mark attendance ─────────────────────────────────
   const handleMarkAttendance = async () => {
     if (!selectedCourse || !markDate) return;
@@ -276,36 +327,104 @@ export default function AdminPage() {
   if (authLoading || !profile) return null;
   if (profile.role !== "admin") return null;
 
-  // ── No class yet — show setup screen ─────────────────────
+  // ── No class yet — onboarding wizard ────────────────────
   if (!classLoading && !myClass) {
+    const firstName = profile.displayName?.split(" ")[0] || "there";
     return (
       <DashboardLayout>
-        <div className="max-w-md mx-auto mt-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
+        <div className="max-w-lg mx-auto mt-10">
+
+          {/* Welcome header */}
+          <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: "linear-gradient(135deg, #0e3326, #0f4535)" }}>
+              <GraduationCap className="w-7 h-7 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">Set up your class</h1>
-              <p className="text-slate-400 text-sm">Create your class so students can join.</p>
-            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Welcome, {firstName}!</h1>
+            <p className="text-slate-500 text-sm mt-1.5 max-w-xs mx-auto">
+              You've been approved as a Class Rep. Set up your class to unlock all admin features.
+            </p>
           </div>
-          <div className="bg-white rounded-xl border border-[#e4e4dc] p-6">
-            <form onSubmit={handleCreateClass} className="flex flex-col gap-4">
-              <Input label="Class Name *" placeholder="e.g. Computer Science — Batch 2024"
-                value={classForm.name} onChange={e => setClassForm(p => ({ ...p, name: e.target.value }))} />
-              <Input label="Major / Faculty *" placeholder="e.g. Computer Science"
-                value={classForm.major} onChange={e => setClassForm(p => ({ ...p, major: e.target.value }))} />
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-slate-700">Join Code (optional)</label>
-                <input placeholder="Leave blank to auto-generate (e.g. CS2024)"
+
+          {/* Steps */}
+          <div className="flex items-center gap-0 mb-8 px-2">
+            {[
+              { n: 1, label: "Create class" },
+              { n: 2, label: "Share join code" },
+              { n: 3, label: "Add courses" },
+            ].map((step, i) => (
+              <div key={step.n} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    step.n !== 1 ? "bg-slate-100 text-slate-400" : "text-white"
+                  }`}
+                  style={step.n === 1 ? { background: "linear-gradient(135deg, #0e3326, #0f4535)" } : undefined}
+                  >{step.n}</div>
+                  <p className={`text-[11px] mt-1 font-medium ${step.n === 1 ? "text-slate-700" : "text-slate-400"}`}>{step.label}</p>
+                </div>
+                {i < 2 && <div className="w-full h-px bg-slate-200 mb-5 mx-1" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Pre-fill notice */}
+          {approvedRequest && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-green-50 border border-green-100 mb-4">
+              <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-green-800">Pre-filled from your approved application</p>
+                <p className="text-xs text-green-600 mt-0.5">Review the details below and adjust if needed.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Form */}
+          <div className="bg-white rounded-2xl border border-[#e4e4dc] p-6 shadow-sm">
+            <form onSubmit={handleCreateClass} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <Input label="Class Name *" placeholder="e.g. Computer Science — Batch 2024"
+                  value={classForm.name} onChange={e => setClassForm(p => ({ ...p, name: e.target.value }))} />
+                <p className="text-xs text-slate-400">Use a name your students will recognise.</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Input label="Major / Faculty *" placeholder="e.g. Computer Science"
+                  value={classForm.major} onChange={e => setClassForm(p => ({ ...p, major: e.target.value }))} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700">Join Code <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input placeholder="Leave blank to auto-generate"
                   value={classForm.joinCode} onChange={e => setClassForm(p => ({ ...p, joinCode: e.target.value.toUpperCase() }))}
                   maxLength={8}
-                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 uppercase tracking-widest font-mono" />
-                <p className="text-xs text-slate-400">Students will use this code to join your class.</p>
+                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)] uppercase tracking-widest font-mono" />
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-slate-50">
+                  <Copy className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-500">
+                    Students paste this code on the dashboard or Profile page to join your class. You can share it anytime from the Admin Panel.
+                  </p>
+                </div>
               </div>
-              <Button type="submit" loading={classSaving} fullWidth>Create Class</Button>
+
+              <Button type="submit" loading={classSaving} fullWidth>
+                Create Class &amp; Get Join Code →
+              </Button>
             </form>
+          </div>
+
+          {/* What's next hint */}
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            {[
+              { icon: Users,     title: "Students join",    desc: "Share the join code so classmates can join" },
+              { icon: BookOpen,  title: "Add courses",      desc: "Post official courses from the Courses tab"  },
+              { icon: Bell,      title: "Post updates",     desc: "Announce deadlines and events to your class" },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="bg-white rounded-xl border border-[#e4e4dc] p-3 text-center">
+                <Icon className="w-4 h-4 text-slate-400 mx-auto mb-2" />
+                <p className="text-[12px] font-semibold text-slate-700">{title}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </DashboardLayout>
@@ -334,7 +453,8 @@ export default function AdminPage() {
     <DashboardLayout>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: "linear-gradient(135deg, #0e3326, #0f4535)" }}>
           <ShieldCheck className="w-4 h-4 text-white" />
         </div>
         <div>
@@ -345,7 +465,8 @@ export default function AdminPage() {
 
       {/* Class info banner */}
       {myClass && (
-        <div className="bg-slate-900 rounded-xl px-5 py-4 mb-5 flex items-center justify-between flex-wrap gap-3">
+        <div className="rounded-xl px-5 py-4 mb-5 flex items-center justify-between flex-wrap gap-3"
+          style={{ background: "linear-gradient(135deg, #0a1f15, #0e3326)" }}>
           <div className="flex items-center gap-3">
             <GraduationCap className="w-4 h-4 text-slate-400 shrink-0" />
             <div>
@@ -385,7 +506,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-slate-100 rounded-xl p-1 w-fit">
-        {(["announcements", "courses", "attendance", "students"] as Tab[]).map(t => (
+        {(["announcements", "courses", "attendance", "students", "events"] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
               tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
@@ -411,7 +532,7 @@ export default function AdminPage() {
                 <label className="text-sm font-medium text-slate-700">Body</label>
                 <textarea placeholder="Write your announcement here..." value={annForm.body} rows={4}
                   onChange={e => setAnnForm(p => ({ ...p, body: e.target.value }))}
-                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none" />
+                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)] resize-none" />
               </div>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" checked={annForm.pinned}
@@ -495,11 +616,10 @@ export default function AdminPage() {
                   <div className="flex gap-1.5 flex-wrap">
                     {DAYS.map(d => (
                       <button key={d} type="button" onClick={() => toggleDay(d)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                          courseForm.days.includes(d)
-                            ? "bg-slate-900 text-white border-slate-900"
-                            : "border-slate-200 text-slate-500 hover:border-slate-400"
-                        }`}>{d}</button>
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                        style={courseForm.days.includes(d)
+                          ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", color: "#fff", borderColor: "transparent" }
+                          : { borderColor: "#e8e4da", color: "#64748b" }}>{d}</button>
                     ))}
                   </div>
                 </div>
@@ -589,7 +709,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-slate-500">Date</label>
                   <input type="date" value={markDate} onChange={e => setMarkDate(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400" />
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#0e3326]" />
                 </div>
               </div>
 
@@ -660,6 +780,74 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── Events Tab ───────────────────────────────────── */}
+      {tab === "events" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">{classEvents.length} class-wide event{classEvents.length !== 1 ? "s" : ""}</p>
+            <Button onClick={() => setShowEventForm(v => !v)}>
+              {showEventForm ? <X size={15} /> : <Plus size={15} />}
+              {showEventForm ? "Cancel" : "Post Event"}
+            </Button>
+          </div>
+
+          {showEventForm && (
+            <div className="bg-white rounded-xl border border-[#e4e4dc] p-5">
+              <h2 className="font-semibold text-slate-800 text-sm mb-4">New Class Event</h2>
+              <form onSubmit={handlePostEvent} className="flex flex-col gap-3">
+                <Input label="Title *" placeholder="e.g. Mid-term exam"
+                  value={eventForm.title} onChange={e => setEventForm(p => ({ ...p, title: e.target.value }))} />
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-slate-700">Description</label>
+                  <textarea placeholder="Optional details..." value={eventForm.description} rows={3}
+                    onChange={e => setEventForm(p => ({ ...p, description: e.target.value }))}
+                    className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)] resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Date *" type="date" value={eventForm.eventDate}
+                    onChange={e => setEventForm(p => ({ ...p, eventDate: e.target.value }))} />
+                  <Input label="Location" placeholder="e.g. Hall A"
+                    value={eventForm.location} onChange={e => setEventForm(p => ({ ...p, location: e.target.value }))} />
+                </div>
+                <Button type="submit" loading={eventSaving} fullWidth>Post to Class</Button>
+              </form>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+          ) : classEvents.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm">No class events yet. Post one above.</div>
+          ) : (
+            <div className="space-y-2">
+              {classEvents.map(ev => (
+                <div key={ev.id} className="bg-white rounded-xl border border-[#e4e4dc] px-4 py-3 flex items-start gap-4 group">
+                  <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-slate-100 shrink-0">
+                    <Calendar className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{ev.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{ev.eventDate}</p>
+                    {(ev as any).location && (
+                      <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                        <MapPin size={10} /> {(ev as any).location}
+                      </p>
+                    )}
+                    {(ev as any).description && (
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{(ev as any).description}</p>
+                    )}
+                  </div>
+                  <button onClick={() => handleDeleteEvent(ev.id)}
+                    className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all shrink-0">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Students Tab ──────────────────────────────────── */}
       {tab === "students" && (
         <div className="space-y-4">
@@ -713,9 +901,10 @@ export default function AdminPage() {
                             {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                              u.role === "admin" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"
-                            }`}>
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                              style={u.role === "admin"
+                                ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", color: "#fff" }
+                                : { background: "#f1f5f9", color: "#64748b" }}>
                               {u.role === "admin" ? "Admin" : "Student"}
                             </span>
                           </td>

@@ -1,15 +1,16 @@
-export type UserRole = "student" | "admin";
+export type UserRole = "student" | "admin" | "superadmin";
 
 export interface UserProfile {
-  uid:         string;
-  email:       string;
-  displayName: string;
-  role:        UserRole;
-  studentId?:  string;
-  phone?:      string;
-  createdAt:   string;
-  monthlyBudgetUSD?: number;
-  classId?:    string;   // class/cohort the user belongs to or manages
+  uid:                 string;
+  email:               string;
+  displayName:         string;
+  role:                UserRole;
+  studentId?:          string;
+  phone?:              string;
+  createdAt:           string;
+  monthlyBudgetUSD?:   number;
+  classId?:            string;
+  onboardingComplete?: boolean;
 }
 
 export interface Class {
@@ -140,6 +141,23 @@ export interface Announcement {
   pinned:    boolean;
   createdBy: string;
   createdAt: string;
+}
+
+export type AdminRequestStatus = "pending" | "approved" | "rejected";
+
+export interface AdminRequest {
+  id:              string;
+  uid:             string;
+  displayName:     string;
+  email:           string;
+  className:       string;
+  major:           string;
+  reason:          string;
+  status:          AdminRequestStatus;
+  createdAt:       string;
+  reviewedAt?:     string;
+  reviewedBy?:     string;
+  rejectionNote?:  string;
 }
 
 export interface FocusNote {

@@ -88,8 +88,10 @@ export default function DeadlineNotifier() {
           {/* Task list */}
           {tasks.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-2xl mb-2">✅</p>
-              <p className="text-sm text-gray-500 font-medium">All caught up!</p>
+              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-2">
+                <Bell size={16} className="text-green-500" />
+              </div>
+              <p className="text-sm text-gray-500 font-medium">All caught up</p>
               <p className="text-xs text-gray-400 mt-0.5">No tasks due in the next 3 days</p>
             </div>
           ) : (
@@ -156,9 +158,9 @@ function fireBrowserNotifications(tasks: Task[], today: string) {
     if (sessionStorage.getItem(key)) return; // only once per session
     sessionStorage.setItem(key, "1");
 
-    const title = diff < 0  ? `⚠️ Overdue: ${task.title}`
-                : diff === 0 ? `🔴 Due today: ${task.title}`
-                :              `🟡 Due tomorrow: ${task.title}`;
+    const title = diff < 0  ? `Overdue: ${task.title}`
+                : diff === 0 ? `Due today: ${task.title}`
+                :              `Due tomorrow: ${task.title}`;
     const body  = `Due ${task.dueDate}${task.priority ? ` · ${task.priority} priority` : ""}`;
     new Notification(title, { body, icon: "/favicon.ico" });
   });

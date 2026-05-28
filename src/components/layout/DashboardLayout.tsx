@@ -32,10 +32,10 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5f5f0]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#faf8f3" }}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-slate-800 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Loading…</p>
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "rgba(14,51,38,0.15)", borderTopColor: "#0e3326" }} />
+          <p className="text-sm" style={{ color: "rgba(14,51,38,0.4)" }}>Loading…</p>
         </div>
       </div>
     );
@@ -44,7 +44,7 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] flex">
+    <div className="min-h-screen flex" style={{ background: "#faf8f3" }}>
 
       {/* Mobile backdrop */}
       {sidebarOpen && (
@@ -61,29 +61,35 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
 
         {/* Mobile top bar */}
-        <header className="lg:hidden sticky top-0 z-20 flex items-center gap-3 px-4 h-14 shrink-0 bg-white border-b border-[#e4e4dc]">
+        <header className="lg:hidden sticky top-0 z-20 flex items-center gap-3 px-4 h-14 shrink-0 border-b"
+          style={{ background: "#0a1f15", borderColor: "rgba(201,168,76,0.15)" }}>
           <button
             onClick={() => setSidebarOpen(true)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+            style={{ color: "rgba(245,240,232,0.6)" }}>
             <Menu size={18} />
           </button>
           <div className="flex items-center gap-2 flex-1">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center bg-slate-900">
-              <GraduationCap size={13} className="text-white" />
+            <div className="w-6 h-6 rounded-md flex items-center justify-center border"
+              style={{ background: "rgba(201,168,76,0.15)", borderColor: "rgba(201,168,76,0.3)" }}>
+              <GraduationCap size={13} style={{ color: "#c9a84c" }} />
             </div>
-            <span className="text-slate-900 font-bold text-[15px] tracking-tight">UniLife</span>
+            <span className="font-bold text-[15px] tracking-tight" style={{ color: "#f5f0e8" }}>UniLife</span>
           </div>
           <DeadlineNotifier />
         </header>
 
-        {/* Desktop top bar — notifications only, unobtrusive */}
-        <header className="hidden lg:flex items-center justify-end px-8 h-11 shrink-0 sticky top-0 z-20 bg-[#f5f5f0] border-b border-[#e4e4dc]/60">
+        {/* Desktop top bar */}
+        <header className="hidden lg:flex items-center justify-end px-8 h-11 shrink-0 sticky top-0 z-20 border-b"
+          style={{ background: "linear-gradient(180deg, #0a1f15 0%, #0e3326 100%)", borderColor: "rgba(201,168,76,0.12)" }}>
           <DeadlineNotifier />
         </header>
 
         {/* Page content */}
         <main className={noPadding ? "flex-1" : "flex-1 p-4 sm:p-6 lg:p-8"}>
-          {children}
+          <div key={pathname} className="page-fade h-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

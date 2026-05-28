@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { getEvents, createEvent, deleteEvent, getUserRSVPs, rsvpToEvent, cancelRSVP, getEventRSVPs } from "@/lib/firestore";
-import { Event, EventRSVP } from "@/types";
-import { Calendar, Plus, X, Trash2, MapPin, Clock, Users, Check } from "lucide-react";
+import { getUserRSVPs, rsvpToEvent, cancelRSVP, getEventRSVPs } from "@/lib/firestore";
+import { EventRSVP } from "@/types";
+import { Calendar, Plus, X, Trash2, MapPin, Clock, Users, Check, GraduationCap } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -19,9 +19,17 @@ const MONTH_GRADIENTS = [
   "from-rose-500 to-pink-600",     "from-green-500 to-emerald-600",
 ];
 
+async function apiFetch(path: string, user: any, options?: RequestInit) {
+  const token = await user.getIdToken();
+  return fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...options?.headers },
+  });
+}
+
 export default function EventsPage() {
   const { user, profile } = useAuth();
-  const [events,       setEvents]       = useState<Event[]>([]);
+  const [events,       setEvents]       = useState<any[]>([]);
   const [rsvpCounts,   setRsvpCounts]   = useState<Record<string, number>>({});
   const [myRsvps,      setMyRsvps]      = useState<EventRSVP[]>([]);
   const [rsvpLoading,  setRsvpLoading]  = useState<Record<string, boolean>>({});
@@ -32,13 +40,14 @@ export default function EventsPage() {
   const [form, setForm] = useState({ title: "", description: "", eventDate: "", location: "" });
 
   const load = async () => {
+    if (!user) return;
     try {
-      const data = await getEvents();
-      setEvents(data);
+      const res  = await apiFetch("/api/events", user);
+      const data = await res.json();
+      setEvents(Array.isArray(data) ? data : []);
 
-      // Load RSVP counts for all events in parallel
       const counts = await Promise.all(
-        data.map(e => getEventRSVPs(e.id).then(r => [e.id, r.length] as [string, number]))
+        data.map((e: any) => getEventRSVPs(e.id).then(r => [e.id, r.length] as [string, number]))
       );
       setRsvpCounts(Object.fromEntries(counts));
     } catch (err) { console.error(err); }
@@ -51,15 +60,22 @@ export default function EventsPage() {
     catch (err) { console.error(err); }
   };
 
-  useEffect(() => { load(); }, []);
-  useEffect(() => { loadMyRsvps(); }, [user]);
+  useEffect(() => { if (user) { load(); loadMyRsvps(); } }, [user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.eventDate) return toast.error("Title and date are required");
     setSaving(true);
     try {
-      await createEvent({ ...form, createdBy: user!.uid, createdAt: new Date().toISOString() });
+      const res = await apiFetch("/api/events", user, {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to create event");
+        return;
+      }
       toast.success("Event created!");
       setShowModal(false);
       setForm({ title: "", description: "", eventDate: "", location: "" });
@@ -71,9 +87,10 @@ export default function EventsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this event?")) return;
     try {
-      await deleteEvent(id);
+      const res = await apiFetch(`/api/events/${id}`, user, { method: "DELETE" });
+      if (!res.ok) { toast.error("Failed to delete"); return; }
       toast.success("Event deleted!");
-      load();
+      setEvents(p => p.filter(e => e.id !== id));
     } catch { toast.error("Failed to delete"); }
   };
 
@@ -108,6 +125,9 @@ export default function EventsPage() {
   const upcoming = events.filter(e => new Date(e.eventDate) >= now).length;
   const past     = events.filter(e => new Date(e.eventDate) <  now).length;
 
+  const canDelete = (event: any) =>
+    profile?.role === "admin" || event.createdBy === user?.uid;
+
   return (
     <DashboardLayout>
       {/* Header */}
@@ -116,20 +136,19 @@ export default function EventsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <p className="text-gray-500 text-sm mt-1">{upcoming} upcoming · {past} past</p>
         </div>
-        {profile?.role === "admin" && (
-          <Button onClick={() => setShowModal(true)}>
-            <Plus size={16} /> Add Event
-          </Button>
-        )}
+        <Button onClick={() => setShowModal(true)}>
+          <Plus size={16} /> Add Event
+        </Button>
       </div>
 
       {/* Filter Tabs */}
       <div className="flex gap-2 mb-6">
         {(["upcoming", "all", "past"] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              filter === f ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-            }`}
+            className="px-4 py-1.5 rounded-full text-sm font-medium transition-all border"
+            style={filter === f
+              ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", color: "#fff", borderColor: "transparent" }
+              : { background: "#fff", color: "#64748b", borderColor: "#e8e4da" }}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
@@ -145,11 +164,9 @@ export default function EventsPage() {
             <Calendar className="w-8 h-8 text-gray-300" />
           </div>
           <p className="text-gray-400 font-medium">No {filter} events</p>
-          {profile?.role === "admin" && (
-            <Button className="mt-5" onClick={() => setShowModal(true)}>
-              <Plus size={16} /> Add Event
-            </Button>
-          )}
+          <Button className="mt-5" onClick={() => setShowModal(true)}>
+            <Plus size={16} /> Add Event
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -174,12 +191,19 @@ export default function EventsPage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-gray-900 leading-snug">{event.title}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-900 leading-snug">{event.title}</h3>
+                      {event.isClassWide && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
+                          <GraduationCap size={10} /> Class
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isPast ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-700"}`}>
                         {isPast ? "Past" : "Upcoming"}
                       </span>
-                      {profile?.role === "admin" && (
+                      {canDelete(event) && (
                         <button onClick={() => handleDelete(event.id)} className="text-gray-300 hover:text-red-400 transition-colors">
                           <Trash2 size={15} />
                         </button>
@@ -212,11 +236,12 @@ export default function EventsPage() {
                       <button
                         onClick={() => handleRSVP(event.id)}
                         disabled={rsvpLoading[event.id]}
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 ${
                           isRsvped
                             ? "bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600"
-                            : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                        } disabled:opacity-50`}
+                            : "text-white"
+                        }`}
+                        style={!isRsvped ? { background: "linear-gradient(135deg, #0e3326, #0f4535)" } : undefined}
                       >
                         {isRsvped ? <><Check size={13} /> Going</> : <><Plus size={13} /> RSVP</>}
                       </button>
@@ -236,7 +261,7 @@ export default function EventsPage() {
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Add New Event</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Schedule an event for students</p>
+                <p className="text-sm text-gray-400 mt-0.5">Add a personal event to track and RSVP</p>
               </div>
               <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
                 <X size={18} className="text-gray-400" />
@@ -253,6 +278,11 @@ export default function EventsPage() {
                 <Input label="Location" placeholder="e.g. Room 101" value={form.location}
                   onChange={e => setForm(p => ({ ...p, location: e.target.value }))} />
               </div>
+              {profile?.role === "admin" && (
+                <p className="text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">
+                  To post a class-wide event visible to all students, use the Admin Panel.
+                </p>
+              )}
               <div className="flex gap-3 mt-1">
                 <Button type="button" variant="secondary" fullWidth onClick={() => setShowModal(false)}>Cancel</Button>
                 <Button type="submit" fullWidth loading={saving}>Create Event</Button>

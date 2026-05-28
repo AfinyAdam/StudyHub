@@ -5,25 +5,29 @@ import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { getUserExpenses, createExpense, deleteExpense } from "@/lib/firestore";
 import { Expense, ExpenseCategory } from "@/types";
-import { Wallet, Plus, X, Trash2, TrendingDown, DollarSign, Settings, ChevronDown, Download } from "lucide-react";
+import {
+  Wallet, Plus, X, Trash2, Receipt, DollarSign, Settings, Download,
+  Utensils, Car, Home, BookOpen, Gamepad2, HeartPulse, Package,
+  AlertTriangle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  Tooltip, ResponsiveContainer, PieChart, Pie,
 } from "recharts";
 
 const EXCHANGE_RATE = 4100;
 
-const CATEGORIES: { value: ExpenseCategory; emoji: string; label: string; color: string; bg: string }[] = [
-  { value: "food",          emoji: "🍜", label: "Food",          color: "#3B82F6", bg: "bg-blue-50 text-blue-700"    },
-  { value: "transport",     emoji: "🚌", label: "Transport",     color: "#8B5CF6", bg: "bg-purple-50 text-purple-700" },
-  { value: "housing",       emoji: "🏠", label: "Housing",       color: "#10B981", bg: "bg-green-50 text-green-700"   },
-  { value: "education",     emoji: "📚", label: "Education",     color: "#F59E0B", bg: "bg-amber-50 text-amber-700"   },
-  { value: "entertainment", emoji: "🎮", label: "Entertainment", color: "#EF4444", bg: "bg-red-50 text-red-700"       },
-  { value: "health",        emoji: "💊", label: "Health",        color: "#06B6D4", bg: "bg-cyan-50 text-cyan-700"     },
-  { value: "other",         emoji: "📦", label: "Other",         color: "#6B7280", bg: "bg-gray-100 text-gray-700"    },
+const CATEGORIES: { value: ExpenseCategory; icon: React.ElementType; label: string; color: string; iconBg: string; textColor: string }[] = [
+  { value: "food",          icon: Utensils,   label: "Food",          color: "#3B82F6", iconBg: "#eff6ff", textColor: "#1d4ed8" },
+  { value: "transport",     icon: Car,        label: "Transport",     color: "#8B5CF6", iconBg: "#f5f3ff", textColor: "#6d28d9" },
+  { value: "housing",       icon: Home,       label: "Housing",       color: "#10B981", iconBg: "#f0fdf4", textColor: "#047857" },
+  { value: "education",     icon: BookOpen,   label: "Education",     color: "#F59E0B", iconBg: "#fffbeb", textColor: "#b45309" },
+  { value: "entertainment", icon: Gamepad2,   label: "Fun",           color: "#EF4444", iconBg: "#fef2f2", textColor: "#b91c1c" },
+  { value: "health",        icon: HeartPulse, label: "Health",        color: "#06B6D4", iconBg: "#ecfeff", textColor: "#0e7490" },
+  { value: "other",         icon: Package,    label: "Other",         color: "#6B7280", iconBg: "#f9fafb", textColor: "#4b5563" },
 ];
 
 const getCat = (val: string) => CATEGORIES.find(c => c.value === val) || CATEGORIES[CATEGORIES.length - 1];
@@ -36,8 +40,9 @@ export default function FinancePage() {
   const [showBudget,  setShowBudget]  = useState(false);
   const [saving,      setSaving]      = useState(false);
   const [budget,      setBudget]      = useState(profile?.monthlyBudgetUSD || 0);
-  const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
-  const [rate,        setRate]        = useState(EXCHANGE_RATE);
+  const [monthFilter,    setMonthFilter]    = useState(new Date().toISOString().slice(0, 7));
+  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "all">("all");
+  const [rate,           setRate]           = useState(EXCHANGE_RATE);
   const [form, setForm] = useState({
     amountUSD: "", category: "food" as ExpenseCategory,
     note: "", expenseDate: new Date().toISOString().split("T")[0],
@@ -53,7 +58,10 @@ export default function FinancePage() {
   useEffect(() => { load(); }, [user]);
   useEffect(() => { setBudget(profile?.monthlyBudgetUSD || 0); }, [profile]);
 
-  const monthly    = expenses.filter(e => e.expenseDate.startsWith(monthFilter));
+  const monthly    = expenses
+    .filter(e => e.expenseDate.startsWith(monthFilter))
+    .sort((a, b) => b.expenseDate.localeCompare(a.expenseDate));
+  const filtered   = categoryFilter === "all" ? monthly : monthly.filter(e => e.category === categoryFilter);
   const totalUSD   = monthly.reduce((s, e) => s + e.amountUSD, 0);
   const totalKHR   = Math.round(totalUSD * rate);
   const remaining  = budget - totalUSD;
@@ -61,7 +69,7 @@ export default function FinancePage() {
 
   const categoryData = CATEGORIES.map(cat => ({
     name: cat.label, value: monthly.filter(e => e.category === cat.value).reduce((s, e) => s + e.amountUSD, 0),
-    color: cat.color,
+    color: cat.color, fill: cat.color,
   })).filter(d => d.value > 0);
 
   const dailyMap: Record<string, number> = {};
@@ -69,7 +77,7 @@ export default function FinancePage() {
   const dailyData = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b))
     .map(([date, amount]) => ({ day: date.slice(8), amount: parseFloat(amount.toFixed(2)) }));
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     const usd = parseFloat(form.amountUSD);
     if (!usd || usd <= 0) return toast.error("Please enter a valid amount");
@@ -147,12 +155,12 @@ export default function FinancePage() {
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500 font-medium">Month</label>
           <input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 bg-white" />
+            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#0e3326] bg-white" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500 font-medium">Exchange Rate (1 USD = ? KHR)</label>
           <input type="number" value={rate} onChange={e => setRate(Number(e.target.value))}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 w-36 bg-white" />
+            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#0e3326] w-36 bg-white" />
         </div>
       </div>
 
@@ -162,7 +170,7 @@ export default function FinancePage() {
           { icon: DollarSign, label: "Spent (USD)",     value: `$${totalUSD.toFixed(2)}`,          bg: "bg-blue-50",   iconColor: "text-blue-600"   },
           { icon: Wallet,     label: "Spent (KHR)",     value: `៛${totalKHR.toLocaleString()}`,    bg: "bg-purple-50", iconColor: "text-purple-600" },
           { icon: Wallet,     label: "Remaining",       value: budget > 0 ? `$${remaining.toFixed(2)}` : "No budget", bg: remaining < 0 ? "bg-red-50" : "bg-green-50", iconColor: remaining < 0 ? "text-red-600" : "text-green-600" },
-          { icon: TrendingDown, label: "Transactions",  value: monthly.length,                     bg: "bg-amber-50",  iconColor: "text-amber-600"  },
+          { icon: Receipt,      label: "Transactions",  value: monthly.length,                     bg: "bg-amber-50",  iconColor: "text-amber-600"  },
         ].map(({ icon: Icon, label, value, bg, iconColor }) => (
           <div key={label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
@@ -188,7 +196,10 @@ export default function FinancePage() {
               style={{ width: `${budgetPct}%` }} />
           </div>
           {budgetPct >= 90 && (
-            <p className="text-xs text-red-500 mt-2 font-medium">⚠️ You have used {budgetPct.toFixed(0)}% of your budget!</p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <AlertTriangle size={12} className="text-red-500 shrink-0" />
+              <p className="text-xs text-red-500 font-medium">You have used {budgetPct.toFixed(0)}% of your budget</p>
+            </div>
           )}
         </div>
       )}
@@ -211,27 +222,64 @@ export default function FinancePage() {
           </div>
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h2 className="font-semibold text-gray-900 mb-4">By Category</h2>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                  {categoryData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip formatter={(v: any) => [`$${v.toFixed(2)}`, "Amount"]}
-                  contentStyle={{ borderRadius: "12px", border: "1px solid #E5E7EB" }} />
-                <Legend iconType="circle" iconSize={8} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="flex gap-4 items-center">
+              <div className="shrink-0" style={{ width: 140, height: 140 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value" />
+                    <Tooltip formatter={(v: any) => [`$${v.toFixed(2)}`, "Amount"]}
+                      contentStyle={{ borderRadius: "12px", border: "1px solid #E5E7EB" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="flex-1 space-y-1.5 min-w-0">
+                {categoryData.map(cat => (
+                  <li key={cat.name} className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
+                    <span className="text-xs text-gray-600 flex-1 truncate">{cat.name}</span>
+                    <span className="text-xs font-semibold text-gray-800">${cat.value.toFixed(2)}</span>
+                    <span className="text-[11px] text-gray-400 w-9 text-right">{totalUSD > 0 ? Math.round((cat.value / totalUSD) * 100) : 0}%</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}
 
       {/* Expense List */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">
-            {new Date(monthFilter + "-01").toLocaleString("default", { month: "long", year: "numeric" })}
-          </h2>
-          <span className="text-sm text-gray-400">{monthly.length} transactions</span>
+        <div className="px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-900">
+              {new Date(monthFilter + "-01").toLocaleString("default", { month: "long", year: "numeric" })}
+            </h2>
+            <span className="text-sm text-gray-400">{filtered.length} of {monthly.length} transactions</span>
+          </div>
+          {/* Category filter pills */}
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              onClick={() => setCategoryFilter("all")}
+              className="text-xs px-3 py-1 rounded-full font-medium border transition-all"
+              style={categoryFilter === "all"
+                ? { background: "linear-gradient(135deg, #0e3326, #0f4535)", color: "#fff", borderColor: "transparent" }
+                : { borderColor: "#e8e4da", color: "#64748b" }}>
+              All
+            </button>
+            {CATEGORIES.filter(c => monthly.some(e => e.category === c.value)).map(cat => {
+              const CatIcon = cat.icon;
+              return (
+                <button key={cat.value}
+                  onClick={() => setCategoryFilter(categoryFilter === cat.value ? "all" : cat.value)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium border transition-all"
+                  style={categoryFilter === cat.value
+                    ? { background: "linear-gradient(135deg, #0e3326, #175c3a)", color: "#fff", borderColor: "transparent" }
+                    : { borderColor: "#e8e4da", color: "#64748b" }}>
+                  <CatIcon size={11} /> {cat.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {loading ? (
@@ -246,19 +294,23 @@ export default function FinancePage() {
               <Plus size={16} /> Add First Expense
             </Button>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-10 text-center text-sm text-gray-400">No expenses in this category.</div>
         ) : (
           <ul className="divide-y divide-gray-50">
-            {monthly.map(expense => {
+            {filtered.map(expense => {
               const cat = getCat(expense.category);
               return (
-                <li key={expense.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center shrink-0 text-xl">
-                    {cat.emoji}
+                <li key={expense.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#faf8f4] transition-colors">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: cat.iconBg }}>
+                    <cat.icon size={17} style={{ color: cat.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.bg}`}>{cat.label}</span>
-                      {expense.note && <span className="text-xs text-gray-400 truncate">{expense.note}</span>}
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: cat.iconBg, color: cat.textColor }}>{cat.label}</span>
+                      {expense.note && <span className="text-xs text-slate-400 truncate">{expense.note}</span>}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{expense.expenseDate}</p>
                   </div>
@@ -279,58 +331,90 @@ export default function FinancePage() {
       {/* Add Expense Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#f5f2ec]">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Add Expense</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Track a new spending</p>
+                <h2 className="text-[16px] font-bold text-slate-900">Add Expense</h2>
+                <p className="text-[12px] text-slate-400 mt-0.5">Track a new spending</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-                <X size={18} className="text-gray-400" />
+              <button onClick={() => setShowModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={16} className="text-slate-400" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <form onSubmit={handleCreate} className="flex flex-col gap-4 px-6 py-5">
               {/* Amount */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Amount (USD) *</label>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
+                  Amount (USD) *
+                </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">$</span>
                   <input type="number" step="0.01" min="0" placeholder="0.00" value={form.amountUSD}
                     onChange={e => setForm(p => ({ ...p, amountUSD: e.target.value }))}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] bg-white" />
                 </div>
-                {form.amountUSD && (
-                  <p className="text-xs text-gray-400">≈ ៛{Math.round(parseFloat(form.amountUSD) * rate).toLocaleString()} KHR</p>
+                {form.amountUSD && parseFloat(form.amountUSD) > 0 && (
+                  <p className="text-[11px] text-slate-400 mt-1">≈ ៛{Math.round(parseFloat(form.amountUSD) * rate).toLocaleString()} KHR</p>
                 )}
               </div>
 
               {/* Category grid */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-gray-700">Category *</label>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  Category *
+                </label>
                 <div className="grid grid-cols-4 gap-2">
-                  {CATEGORIES.map(cat => (
-                    <button key={cat.value} type="button" onClick={() => setForm(p => ({ ...p, category: cat.value }))}
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-xs transition-all ${
-                        form.category === cat.value ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 hover:bg-gray-50 text-gray-600"
-                      }`}
-                    >
-                      <span className="text-xl">{cat.emoji}</span>
-                      <span className="leading-none text-center text-[10px]">{cat.label}</span>
-                    </button>
-                  ))}
+                  {CATEGORIES.map(cat => {
+                    const active = form.category === cat.value;
+                    return (
+                      <button key={cat.value} type="button"
+                        onClick={() => setForm(p => ({ ...p, category: cat.value }))}
+                        className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all active:scale-95"
+                        style={active
+                          ? { borderColor: cat.color, background: cat.iconBg }
+                          : { borderColor: "#edeae4", background: "#faf8f4" }}>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                          style={{ background: active ? cat.iconBg : "#f1ede8" }}>
+                          <cat.icon size={15} style={{ color: active ? cat.color : "#94a3b8" }} />
+                        </div>
+                        <span className="leading-none text-center text-[10px] font-semibold"
+                          style={{ color: active ? cat.textColor : "#94a3b8" }}>
+                          {cat.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Date *" type="date" value={form.expenseDate}
-                  onChange={e => setForm(p => ({ ...p, expenseDate: e.target.value }))} />
-                <Input label="Note" placeholder="e.g. Lunch" value={form.note}
-                  onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">Date *</label>
+                  <input type="date" value={form.expenseDate}
+                    onChange={e => setForm(p => ({ ...p, expenseDate: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] bg-white" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">Note</label>
+                  <input placeholder="e.g. Lunch" value={form.note}
+                    onChange={e => setForm(p => ({ ...p, note: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] bg-white placeholder:text-slate-300" />
+                </div>
               </div>
 
-              <div className="flex gap-3 mt-1">
-                <Button type="button" variant="secondary" fullWidth onClick={() => setShowModal(false)}>Cancel</Button>
-                <Button type="submit" fullWidth loading={saving}>Add Expense</Button>
+              <div className="flex gap-2.5 pt-1">
+                <button type="button" onClick={() => setShowModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-[#e8e4da] text-sm font-semibold text-slate-600 hover:bg-[#f5f2ec] active:scale-[0.97] transition-all">
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
+                  style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                  {saving
+                    ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : "Add Expense"}
+                </button>
               </div>
             </form>
           </div>
@@ -356,7 +440,7 @@ export default function FinancePage() {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
                   <input type="number" min="0" step="1" value={budget} onChange={e => setBudget(Number(e.target.value))}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)]" />
                 </div>
                 {budget > 0 && (
                   <p className="text-xs text-gray-400">≈ ៛{Math.round(budget * rate).toLocaleString()} KHR/month</p>
