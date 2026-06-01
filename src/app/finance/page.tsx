@@ -129,86 +129,97 @@ export default function FinancePage() {
   return (
     <DashboardLayout>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Finance Tracker</h1>
-          <p className="text-gray-500 text-sm mt-1">Track your expenses in USD & KHR</p>
+          <h1 className="text-[26px] font-bold text-slate-900 leading-tight">Finance Tracker</h1>
+          <p className="text-[13px] text-slate-400 mt-1">Track your expenses in USD & KHR</p>
         </div>
         <div className="flex gap-2">
           {expenses.length > 0 && (
             <button onClick={exportCSV}
-              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 px-3 py-2 rounded-xl transition-colors">
-              <Download size={15} /> Export CSV
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-sm font-semibold border border-[#e8e4da] bg-white text-slate-600 hover:bg-[#f5f2ec] active:scale-[0.97] transition-all">
+              <Download size={14} /> Export CSV
             </button>
           )}
-          <Button variant="secondary" onClick={() => setShowBudget(true)}>
-            <Settings size={15} /> Budget
-          </Button>
-          <Button onClick={() => setShowModal(true)}>
-            <Plus size={16} /> Add Expense
-          </Button>
+          <button onClick={() => setShowBudget(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-sm font-semibold border border-[#e8e4da] bg-white text-slate-600 hover:bg-[#f5f2ec] active:scale-[0.97] transition-all">
+            <Settings size={14} /> Budget
+          </button>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
+            style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+            <Plus size={15} /> Add Expense
+          </button>
         </div>
       </div>
 
       {/* Month + Rate pickers */}
       <div className="flex items-end gap-4 mb-6 flex-wrap">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 font-medium">Month</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Month</label>
           <input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#0e3326] bg-white" />
+            className="px-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] bg-white" />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 font-medium">Exchange Rate (1 USD = ? KHR)</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Exchange Rate (1 USD = ? KHR)</label>
           <input type="number" value={rate} onChange={e => setRate(Number(e.target.value))}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#0e3326] w-36 bg-white" />
+            className="px-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] w-36 bg-white" />
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 stagger">
         {[
-          { icon: DollarSign, label: "Spent (USD)",     value: `$${totalUSD.toFixed(2)}`,          bg: "bg-blue-50",   iconColor: "text-blue-600"   },
-          { icon: Wallet,     label: "Spent (KHR)",     value: `៛${totalKHR.toLocaleString()}`,    bg: "bg-purple-50", iconColor: "text-purple-600" },
-          { icon: Wallet,     label: "Remaining",       value: budget > 0 ? `$${remaining.toFixed(2)}` : "No budget", bg: remaining < 0 ? "bg-red-50" : "bg-green-50", iconColor: remaining < 0 ? "text-red-600" : "text-green-600" },
-          { icon: Receipt,      label: "Transactions",  value: monthly.length,                     bg: "bg-amber-50",  iconColor: "text-amber-600"  },
-        ].map(({ icon: Icon, label, value, bg, iconColor }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
-              <Icon className={`w-5 h-5 ${iconColor}`} />
+          { icon: DollarSign, label: "Spent (USD)",  value: `$${totalUSD.toFixed(2)}`,                                          color: "#2563eb", bg: "#eff6ff" },
+          { icon: Wallet,     label: "Spent (KHR)",  value: `៛${totalKHR.toLocaleString()}`,                                   color: "#6d28d9", bg: "#f5f3ff" },
+          { icon: Wallet,     label: "Remaining",    value: budget > 0 ? `$${remaining.toFixed(2)}` : "No budget",              color: remaining < 0 ? "#dc2626" : "#16a34a", bg: remaining < 0 ? "#fef2f2" : "#f0fdf4" },
+          { icon: Receipt,    label: "Transactions", value: monthly.length,                                                      color: "#d97706", bg: "#fffbeb" },
+        ].map(({ icon: Icon, label, value, color, bg }) => (
+          <div key={label} className="bg-white rounded-2xl p-4 border border-[#e8e4da] card-lift">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: bg }}>
+              <Icon size={15} style={{ color }} />
             </div>
-            <p className={`text-2xl font-bold ${iconColor}`}>{loading ? "—" : value}</p>
-            <p className="text-xs text-gray-500 mt-1">{label}</p>
+            <p className="text-[26px] font-bold leading-none mb-1" style={{ color }}>{loading ? "—" : value}</p>
+            <p className="text-[12px] text-slate-400 font-medium">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Budget Progress */}
       {budget > 0 && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-700">Monthly Budget: ${budget}</p>
-            <p className={`text-sm font-bold ${budgetPct >= 90 ? "text-red-600" : budgetPct >= 70 ? "text-amber-600" : "text-green-600"}`}>
+        <div className="bg-white rounded-2xl px-5 py-4 border border-[#e8e4da] mb-5 card-lift">
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[13px] font-semibold text-slate-700">Monthly Budget: ${budget}</p>
+            <span className={`text-[12px] font-bold px-2.5 py-0.5 rounded-full ${
+              budgetPct >= 90 ? "bg-red-50 text-red-600" : budgetPct >= 70 ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
+            }`}>
               {budgetPct.toFixed(0)}% used
-            </p>
+            </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5">
-            <div className={`h-2.5 rounded-full transition-all duration-500 ${budgetPct >= 90 ? "bg-red-500" : budgetPct >= 70 ? "bg-amber-500" : "bg-green-500"}`}
-              style={{ width: `${budgetPct}%` }} />
+          <div className="w-full bg-slate-100 rounded-full h-2">
+            <div className="h-2 rounded-full transition-all duration-700"
+              style={{
+                width: `${budgetPct}%`,
+                background: budgetPct >= 90 ? "#dc2626" : budgetPct >= 70 ? "#d97706" : "#16a34a",
+              }} />
           </div>
-          {budgetPct >= 90 && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <AlertTriangle size={12} className="text-red-500 shrink-0" />
-              <p className="text-xs text-red-500 font-medium">You have used {budgetPct.toFixed(0)}% of your budget</p>
-            </div>
-          )}
+          <div className="flex justify-between mt-2">
+            <p className="text-[11px] text-slate-400">${remaining.toFixed(2)} remaining</p>
+            {budgetPct >= 90 && (
+              <div className="flex items-center gap-1">
+                <AlertTriangle size={11} className="text-red-500" />
+                <p className="text-[11px] text-red-500 font-medium">Approaching limit</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Charts */}
       {monthly.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 className="font-semibold text-gray-900 mb-4">Daily Spending (USD)</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+          <div className="bg-white rounded-2xl p-5 border border-[#e8e4da] card-lift">
+            <h2 className="text-[13px] font-semibold text-slate-800 mb-4">Daily Spending (USD)</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={dailyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
@@ -220,8 +231,8 @@ export default function FinancePage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 className="font-semibold text-gray-900 mb-4">By Category</h2>
+          <div className="bg-white rounded-2xl p-5 border border-[#e8e4da] card-lift">
+            <h2 className="text-[13px] font-semibold text-slate-800 mb-4">By Category</h2>
             <div className="flex gap-4 items-center">
               <div className="shrink-0" style={{ width: 140, height: 140 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -248,13 +259,13 @@ export default function FinancePage() {
       )}
 
       {/* Expense List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl border border-[#e8e4da] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#f5f2ec]">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-900">
+            <h2 className="text-[13px] font-semibold text-slate-800">
               {new Date(monthFilter + "-01").toLocaleString("default", { month: "long", year: "numeric" })}
             </h2>
-            <span className="text-sm text-gray-400">{filtered.length} of {monthly.length} transactions</span>
+            <span className="text-[12px] text-slate-400">{filtered.length} of {monthly.length} transactions</span>
           </div>
           {/* Category filter pills */}
           <div className="flex gap-1.5 flex-wrap">
@@ -283,21 +294,25 @@ export default function FinancePage() {
         </div>
 
         {loading ? (
-          <div className="p-5 space-y-3">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+          <div className="p-5 space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-[#f5f2ec] rounded-xl animate-pulse" />)}</div>
         ) : monthly.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-3">
-              <Wallet className="w-7 h-7 text-gray-300" />
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+              <Wallet size={24} className="text-white/70" />
             </div>
-            <p className="text-gray-400 text-sm font-medium">No expenses this month</p>
-            <Button className="mt-4" onClick={() => setShowModal(true)}>
-              <Plus size={16} /> Add First Expense
-            </Button>
+            <p className="text-slate-500 font-semibold text-sm">No expenses this month</p>
+            <p className="text-slate-400 text-xs mt-1">Start tracking your spending</p>
+            <button onClick={() => setShowModal(true)}
+              className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
+              style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+              <Plus size={15} /> Add First Expense
+            </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-sm text-gray-400">No expenses in this category.</div>
+          <div className="py-10 text-center text-[13px] text-slate-400">No expenses in this category.</div>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <ul className="divide-y divide-[#f8f5f0]">
             {filtered.map(expense => {
               const cat = getCat(expense.category);
               return (
@@ -424,31 +439,42 @@ export default function FinancePage() {
       {/* Budget Modal */}
       {showBudget && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#f5f2ec]">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Monthly Budget</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Set your spending limit</p>
+                <h2 className="text-[16px] font-bold text-slate-900">Monthly Budget</h2>
+                <p className="text-[12px] text-slate-400 mt-0.5">Set your spending limit in USD</p>
               </div>
-              <button onClick={() => setShowBudget(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-                <X size={18} className="text-gray-400" />
+              <button onClick={() => setShowBudget(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={16} className="text-slate-400" />
               </button>
             </div>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Budget (USD)</label>
+            <div className="px-6 py-5 flex flex-col gap-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
+                  Budget (USD)
+                </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-                  <input type="number" min="0" step="1" value={budget} onChange={e => setBudget(Number(e.target.value))}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)]" />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">$</span>
+                  <input type="number" min="0" step="1" value={budget}
+                    onChange={e => setBudget(Number(e.target.value))}
+                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] bg-white" />
                 </div>
                 {budget > 0 && (
-                  <p className="text-xs text-gray-400">≈ ៛{Math.round(budget * rate).toLocaleString()} KHR/month</p>
+                  <p className="text-[11px] text-slate-400 mt-1">≈ ៛{Math.round(budget * rate).toLocaleString()} KHR/month</p>
                 )}
               </div>
-              <div className="flex gap-3">
-                <Button type="button" variant="secondary" fullWidth onClick={() => setShowBudget(false)}>Cancel</Button>
-                <Button fullWidth onClick={handleSaveBudget}>Save Budget</Button>
+              <div className="flex gap-2.5">
+                <button type="button" onClick={() => setShowBudget(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-[#e8e4da] text-sm font-semibold text-slate-600 hover:bg-[#f5f2ec] active:scale-[0.97] transition-all">
+                  Cancel
+                </button>
+                <button onClick={handleSaveBudget}
+                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
+                  style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                  Save Budget
+                </button>
               </div>
             </div>
           </div>

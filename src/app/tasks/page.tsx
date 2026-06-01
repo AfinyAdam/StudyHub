@@ -30,12 +30,12 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = { high: 0, medium: 1, low: 
 
 // ─── Form type ────────────────────────────────────────────────
 type TaskForm = {
-  title: string; description: string; dueDate: string;
+  title: string; description: string; dueDate: string; dueTime: string;
   courseId: string; status: Task["status"]; priority: TaskPriority;
 };
 
 const BLANK_FORM: TaskForm = {
-  title: "", description: "", dueDate: "", courseId: "",
+  title: "", description: "", dueDate: "", dueTime: "", courseId: "",
   status: "pending", priority: "medium",
 };
 
@@ -52,7 +52,8 @@ function TaskModal({
     initial
       ? {
           title: initial.title, description: initial.description ?? "",
-          dueDate: initial.dueDate, courseId: initial.courseId ?? "",
+          dueDate: initial.dueDate, dueTime: initial.dueTime ?? "",
+          courseId: initial.courseId ?? "",
           status: initial.status, priority: initial.priority ?? "medium",
         }
       : BLANK_FORM
@@ -93,15 +94,17 @@ function TaskModal({
           <div className="grid grid-cols-2 gap-3">
             <Input label="Due Date *" type="date" value={form.dueDate}
               onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} />
+            <Input label="Due Time" type="time" value={form.dueTime}
+              onChange={e => setForm(p => ({ ...p, dueTime: e.target.value }))} />
+          </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Course</label>
-              <select value={form.courseId} onChange={e => setForm(p => ({ ...p, courseId: e.target.value }))}
-                className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white">
-                <option value="">No course</option>
-                {courses.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
-              </select>
-            </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Course</label>
+            <select value={form.courseId} onChange={e => setForm(p => ({ ...p, courseId: e.target.value }))}
+              className="px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white">
+              <option value="">No course</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
+            </select>
           </div>
 
           {/* Priority */}
@@ -355,6 +358,12 @@ export default function TasksPage() {
                     <span className={`flex items-center gap-1 text-xs font-medium ${overdue ? "text-red-500" : "text-gray-400"}`}>
                       {overdue ? <AlertCircle size={11} /> : <Clock size={11} />}
                       {overdue ? "Overdue · " : "Due "}{task.dueDate}
+                      {task.dueTime && (
+                        <span className="font-medium">· {(() => {
+                          const [h, m] = task.dueTime.split(":").map(Number);
+                          return `${h % 12 || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
+                        })()}</span>
+                      )}
                     </span>
                     {course && (
                       <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">

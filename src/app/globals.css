@@ -58,13 +58,13 @@ body {
   color: #1e3a5f;
 }
 
-/* Page fade-in */
+/* Page fade-in — opacity only, no transform (transform on parent breaks fixed modals) */
 @keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .page-fade {
-  animation: page-fade-in 0.22s ease both;
+  animation: page-fade-in 0.18s ease both;
 }
 
 /* Card hover lift */
@@ -76,10 +76,10 @@ body {
   transform: translateY(-2px);
 }
 
-/* Staggered children fade-in */
+/* Staggered children fade-in — opacity only */
 @keyframes stagger-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .stagger > * {
   animation: stagger-in 0.25s ease both;

@@ -7,8 +7,11 @@ import { Toaster } from "react-hot-toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "UniLife — Student Management System",
+  title: "UniLife — Student Portal",
   description: "Manage your university life in one place",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

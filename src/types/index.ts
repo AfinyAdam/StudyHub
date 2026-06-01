@@ -56,6 +56,7 @@ export interface Task {
   title:        string;
   description?: string;
   dueDate:      string;
+  dueTime?:     string;
   status:       TaskStatus;
   priority?:    TaskPriority;
   createdAt:    string;
@@ -77,6 +78,7 @@ export interface Event {
   title:       string;
   description: string;
   eventDate:   string;
+  eventTime?:  string;
   location?:   string;
   createdBy:   string;
   createdAt:   string;

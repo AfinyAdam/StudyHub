@@ -86,7 +86,7 @@ export default function AdminPage() {
 
   // Events
   const [classEvents, setClassEvents]         = useState<Event[]>([]);
-  const [eventForm, setEventForm]             = useState({ title: "", description: "", eventDate: "", location: "" });
+  const [eventForm, setEventForm]             = useState({ title: "", description: "", eventDate: "", eventTime: "", location: "" });
   const [eventSaving, setEventSaving]         = useState(false);
   const [showEventForm, setShowEventForm]     = useState(false);
 
@@ -247,7 +247,7 @@ export default function AdminPage() {
       });
       if (!res.ok) throw new Error();
       toast.success("Event posted to class!");
-      setEventForm({ title: "", description: "", eventDate: "", location: "" });
+      setEventForm({ title: "", description: "", eventDate: "", eventTime: "", location: "" });
       setShowEventForm(false);
       load();
     } catch { toast.error("Failed to post event"); }
@@ -806,9 +806,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input label="Date *" type="date" value={eventForm.eventDate}
                     onChange={e => setEventForm(p => ({ ...p, eventDate: e.target.value }))} />
-                  <Input label="Location" placeholder="e.g. Hall A"
-                    value={eventForm.location} onChange={e => setEventForm(p => ({ ...p, location: e.target.value }))} />
+                  <Input label="Time" type="time" value={eventForm.eventTime}
+                    onChange={e => setEventForm(p => ({ ...p, eventTime: e.target.value }))} />
                 </div>
+                <Input label="Location" placeholder="e.g. Hall A"
+                  value={eventForm.location} onChange={e => setEventForm(p => ({ ...p, location: e.target.value }))} />
                 <Button type="submit" loading={eventSaving} fullWidth>Post to Class</Button>
               </form>
             </div>
@@ -827,7 +829,9 @@ export default function AdminPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800">{ev.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{ev.eventDate}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {ev.eventDate}{ev.eventTime ? ` · ${(() => { const [h,m] = ev.eventTime.split(":").map(Number); return `${h%12||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}`; })()}` : ""}
+                    </p>
                     {(ev as any).location && (
                       <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                         <MapPin size={10} /> {(ev as any).location}

@@ -37,7 +37,7 @@ export default function EventsPage() {
   const [showModal,    setShowModal]    = useState(false);
   const [saving,       setSaving]       = useState(false);
   const [filter,       setFilter]       = useState<"upcoming" | "past" | "all">("upcoming");
-  const [form, setForm] = useState({ title: "", description: "", eventDate: "", location: "" });
+  const [form, setForm] = useState({ title: "", description: "", eventDate: "", eventTime: "", location: "" });
 
   const load = async () => {
     if (!user) return;
@@ -78,7 +78,7 @@ export default function EventsPage() {
       }
       toast.success("Event created!");
       setShowModal(false);
-      setForm({ title: "", description: "", eventDate: "", location: "" });
+      setForm({ title: "", description: "", eventDate: "", eventTime: "", location: "" });
       load();
     } catch { toast.error("Failed to create event"); }
     finally { setSaving(false); }
@@ -115,15 +115,26 @@ export default function EventsPage() {
   };
 
   const now = new Date();
-  const filtered = events.filter(e => {
+
+  const eventDateTime = (e: any) => {
+    if (e.eventTime) {
+      return new Date(`${e.eventDate}T${e.eventTime}`);
+    }
+    // No time set — treat the whole day as upcoming until end of day
     const d = new Date(e.eventDate);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+
+  const filtered = events.filter(e => {
+    const d = eventDateTime(e);
     if (filter === "upcoming") return d >= now;
     if (filter === "past")     return d < now;
     return true;
   });
 
-  const upcoming = events.filter(e => new Date(e.eventDate) >= now).length;
-  const past     = events.filter(e => new Date(e.eventDate) <  now).length;
+  const upcoming = events.filter(e => eventDateTime(e) >= now).length;
+  const past     = events.filter(e => eventDateTime(e) <  now).length;
 
   const canDelete = (event: any) =>
     profile?.role === "admin" || event.createdBy === user?.uid;
@@ -172,7 +183,7 @@ export default function EventsPage() {
         <div className="space-y-3">
           {filtered.map(event => {
             const date     = new Date(event.eventDate);
-            const isPast   = date < now;
+            const isPast   = eventDateTime(event) < now;
             const gradient = MONTH_GRADIENTS[date.getMonth()];
             const isRsvped = myRsvps.some(r => r.eventId === event.id);
             const count    = rsvpCounts[event.id] ?? 0;
@@ -219,6 +230,12 @@ export default function EventsPage() {
                     <span className="flex items-center gap-1.5 text-xs text-gray-400">
                       <Clock size={12} />
                       {date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                      {event.eventTime && (
+                        <span className="font-medium text-slate-600">· {(() => {
+                          const [h, m] = event.eventTime.split(":").map(Number);
+                          return `${h % 12 || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
+                        })()}</span>
+                      )}
                     </span>
                     {event.location && (
                       <span className="flex items-center gap-1.5 text-xs text-blue-500 font-medium">
@@ -275,9 +292,11 @@ export default function EventsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Date *" type="date" value={form.eventDate}
                   onChange={e => setForm(p => ({ ...p, eventDate: e.target.value }))} />
-                <Input label="Location" placeholder="e.g. Room 101" value={form.location}
-                  onChange={e => setForm(p => ({ ...p, location: e.target.value }))} />
+                <Input label="Time" type="time" value={form.eventTime}
+                  onChange={e => setForm(p => ({ ...p, eventTime: e.target.value }))} />
               </div>
+              <Input label="Location" placeholder="e.g. Room 101" value={form.location}
+                onChange={e => setForm(p => ({ ...p, location: e.target.value }))} />
               {profile?.role === "admin" && (
                 <p className="text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">
                   To post a class-wide event visible to all students, use the Admin Panel.
