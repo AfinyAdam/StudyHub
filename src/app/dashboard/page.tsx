@@ -80,7 +80,7 @@ function StatCard({ href, icon: Icon, value, label, color, loading }: {
 }) {
   return (
     <Link href={href}
-      className="group relative bg-white rounded-xl p-4 border border-[#e4e4dc] hover:border-slate-300 card-lift transition-all duration-200">
+      className="group relative paper-card p-4 card-lift transition-all duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color.bg }}>
           <Icon className="w-4 h-4" style={{ color: color.text }} />
@@ -92,7 +92,7 @@ function StatCard({ href, icon: Icon, value, label, color, loading }: {
       ) : (
         <p className="text-[26px] font-bold leading-none mb-1 text-slate-900">{value}</p>
       )}
-      <p className="text-[12px] text-slate-400 font-medium">{label}</p>
+      <p className="text-[12px] text-slate-500 font-medium uppercase tracking-[0.14em]">{label}</p>
     </Link>
   );
 }
@@ -105,15 +105,15 @@ function Card({ title, href, linkLabel = "See all", icon: Icon, iconBg, iconColo
   skeleton?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl p-5 border border-[#e4e4dc] card-lift">
+    <div className="paper-card p-5 card-lift">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${iconBg}`}>
             <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
           </div>
-          <h2 className="font-semibold text-slate-800 text-sm">{title}</h2>
+          <h2 className="handwritten text-slate-800 text-[1.5rem] leading-none tracking-wide">{title}</h2>
         </div>
-        <Link href={href} className="flex items-center gap-0.5 text-[11px] font-medium hover:underline" style={{ color: "#0e3326" }}>
+        <Link href={href} className="flex items-center gap-0.5 text-[11px] font-medium hover:underline" style={{ color: "#8b5e1b" }}>
           {linkLabel} <ArrowRight size={11} />
         </Link>
       </div>
@@ -258,12 +258,12 @@ export default function DashboardPage() {
       {/* ── Greeting ──────────────────────────────────────── */}
       <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div>
-          <p className="text-[13px] text-slate-400 mb-1">{greeting} · {dateStr}</p>
-          <h1 className="text-[26px] font-bold text-slate-900 leading-tight">{firstName}</h1>
+          <p className="text-[13px] text-slate-500 mb-1 uppercase tracking-[0.18em]">{greeting} · {dateStr}</p>
+          <h1 className="text-[3rem] leading-none text-slate-900 handwritten">{firstName}</h1>
           <p className="text-[13px] text-slate-500 mt-1 max-w-md">{insight.text}</p>
         </div>
         {!loading && (
-          <div className="flex items-center gap-2.5 bg-white border border-[#e4e4dc] rounded-xl px-4 py-2.5 self-start">
+          <div className="flex items-center gap-2.5 paper-card px-4 py-2.5 self-start border border-[#e4e4dc] rounded-2xl">
             <Clock size={14} className="text-slate-400" />
             <div>
               <p className="text-slate-900 font-bold text-base leading-none">{todayStudy.toFixed(1)}h</p>
@@ -275,7 +275,7 @@ export default function DashboardPage() {
 
       {/* ── Admin setup banner ────────────────────────────── */}
       {!loading && profile?.role === "admin" && !profile?.classId && (
-        <div className="mb-5 flex items-center gap-3 px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 flex-wrap">
+        <div className="mb-5 flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-slate-200 bg-[#f5f3ea] flex-wrap paper-card">
           <GraduationCap size={16} className="text-slate-500 shrink-0" />
           <p className="text-sm text-slate-600 flex-1">Class not set up yet. Create your class so students can join.</p>
           <a href="/admin" className="text-sm font-medium text-slate-900 hover:underline shrink-0">Go to Admin Panel →</a>
@@ -284,7 +284,7 @@ export default function DashboardPage() {
 
       {/* ── No-class banner ───────────────────────────────── */}
       {!loading && !profile?.classId && profile?.role !== "admin" && !soloMode && (
-        <div className="mb-5 flex items-center gap-4 px-4 py-3.5 rounded-xl border border-[#e4e4dc] bg-white flex-wrap">
+        <div className="mb-5 flex items-center gap-4 px-4 py-3.5 rounded-2xl border border-[#e4e4dc] bg-[#fffdf8] flex-wrap paper-card">
           <GraduationCap size={16} className="text-slate-400 shrink-0" />
           <p className="text-sm text-slate-600 flex-1">You're not in a class yet. Enter your join code to get started.</p>
           <form onSubmit={handleJoinClass} className="flex gap-2 shrink-0">
@@ -293,11 +293,11 @@ export default function DashboardPage() {
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
               placeholder="Join code"
               maxLength={8}
-              className="w-28 px-3 py-1.5 rounded-lg border border-[#e8e4da] text-sm font-mono uppercase tracking-widest outline-none focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.08)]"
+              className="paper-input w-28 px-3 py-1.5 text-sm font-mono uppercase tracking-widest"
             />
             <button type="submit" disabled={joining || !joinCode.trim()}
-              className="px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all hover:brightness-110 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, #0e3326, #0f4535)" }}>
+              className="paper-button px-3 py-1.5 text-white text-sm font-medium transition-all hover:brightness-110 disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, #b98a2e, #8b5e1b)" }}>
               {joining ? "…" : "Join"}
             </button>
           </form>
@@ -313,7 +313,7 @@ export default function DashboardPage() {
         const ann = announcements.find(a => a.pinned) ?? announcements[0];
         if (!ann || dismissedAnn === ann.id) return null;
         return (
-          <div className="flex items-start gap-3 mb-5 px-4 py-3 rounded-xl border border-blue-100 bg-blue-50">
+          <div className="flex items-start gap-3 mb-5 px-4 py-3 rounded-2xl border border-blue-100 bg-[#edf5ff] paper-card">
             <Bell size={15} className="text-blue-500 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-blue-900">{ann.title}</p>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
       {/* ── Overdue alert ─────────────────────────────────── */}
       {!loading && overdueTasks.length > 0 && (
         <Link href="/tasks"
-          className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl border border-red-200 bg-red-50 hover:bg-red-100 transition-colors">
+          className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl border border-red-200 bg-[#fff0ee] hover:bg-red-100 transition-colors paper-card">
           <div className="w-8 h-8 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
             <AlertTriangle size={16} className="text-red-600" />
           </div>
@@ -440,7 +440,7 @@ export default function DashboardPage() {
           {upcomingTasks.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <p className="text-sm text-slate-500">No pending tasks</p>
-              <Link href="/tasks" className="text-xs font-medium hover:underline mt-1" style={{ color: "#0e3326" }}>Add a task</Link>
+              <Link href="/tasks" className="text-xs font-medium hover:underline mt-1" style={{ color: "#b98a2e" }}>Add a task</Link>
             </div>
           ) : (
             <ul className="space-y-1">
@@ -485,7 +485,7 @@ export default function DashboardPage() {
           {budget === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <p className="text-sm text-slate-500">No budget set</p>
-              <Link href="/profile" className="text-xs font-medium hover:underline mt-1" style={{ color: "#0e3326" }}>Set monthly budget</Link>
+              <Link href="/profile" className="text-xs font-medium hover:underline mt-1" style={{ color: "#b98a2e" }}>Set monthly budget</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -534,7 +534,7 @@ export default function DashboardPage() {
           {upcoming.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <p className="text-sm text-slate-500">No upcoming events</p>
-              <Link href="/events" className="text-xs font-medium hover:underline mt-1" style={{ color: "#0e3326" }}>Browse events</Link>
+              <Link href="/events" className="text-xs font-medium hover:underline mt-1" style={{ color: "#b98a2e" }}>Browse events</Link>
             </div>
           ) : (
             <ul className="space-y-2">

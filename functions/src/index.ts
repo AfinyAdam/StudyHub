@@ -70,7 +70,7 @@ export const sendDeadlineReminders = onSchedule(
               token,
               notification: { title, body },
               webpush: {
-                notification: { icon: "/favicon.ico", badge: "/favicon.ico", tag: "unilife-deadline" },
+                notification: { icon: "/studyhub-mark-transparent.png", badge: "/studyhub-mark-transparent.png", tag: "unilife-deadline" },
                 fcmOptions:   { link: "/tasks" },
               },
             })

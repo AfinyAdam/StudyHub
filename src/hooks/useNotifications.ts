@@ -23,7 +23,7 @@ export function useNotifications(items: NotifItem[], enabled: boolean) {
         const key = `${title}::${body}`;
         if (firedRef.current.has(key)) return;
         firedRef.current.add(key);
-        new Notification(title, { body, icon: "/favicon.ico" });
+        new Notification(title, { body, icon: "/studyhub-mark-transparent.png" });
       });
     };
 

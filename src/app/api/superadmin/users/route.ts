@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     if (e.message === "Unauthorized") return unauthorized();
     if (e.message === "Forbidden")    return forbidden();
+    console.error("Failed to load superadmin users", e);
     return serverError();
   }
 }

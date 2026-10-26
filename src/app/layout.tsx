@@ -7,10 +7,10 @@ import { Toaster } from "react-hot-toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "UniLife — Student Portal",
+  title: "StudyHub — Student Portal",
   description: "Manage your university life in one place",
   icons: {
-    icon: "/icon.svg",
+    icon: "/studyhub-mark-transparent.png",
   },
 };
 
@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} app-shell`}>
         <AuthProvider>
           {children}
           <Toaster position="top-right" />

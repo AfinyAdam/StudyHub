@@ -36,7 +36,7 @@ const STATUS = {
   },
 } as const;
 
-const INPUT_CLS = "w-full px-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm text-slate-800 outline-none transition-all focus:border-[#0e3326] focus:ring-2 focus:ring-[rgba(14,51,38,0.07)] bg-white";
+const INPUT_CLS = "w-full px-4 py-2.5 rounded-xl border border-[#e8e4da] text-sm text-slate-800 outline-none transition-all focus:border-[#b98a2e] focus:ring-2 focus:ring-[rgba(201,168,76,0.18)] bg-white";
 
 const DEFAULT_WEEKS    = 16;
 const DEFAULT_MAX_ABS  = 4;
@@ -273,8 +273,8 @@ export default function AttendancePage() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#f5f2ec]">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "rgba(14,51,38,0.08)" }}>
-                <CalendarCheck size={13} style={{ color: "#0e3326" }} />
+                style={{ background: "rgba(201,168,76,0.12)" }}>
+                <CalendarCheck size={13} style={{ color: "#b98a2e" }} />
               </div>
               <p className="text-[13px] font-semibold text-slate-800">Today's Classes</p>
             </div>
@@ -298,7 +298,7 @@ export default function AttendancePage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg"
-                        style={{ background: "rgba(14,51,38,0.08)", color: "#0e3326" }}>
+                        style={{ background: "rgba(201,168,76,0.12)", color: "#b98a2e" }}>
                         {course.code}
                       </span>
                       <span className="text-[13px] font-medium text-slate-700 truncate">{course.name}</span>
@@ -478,7 +478,7 @@ export default function AttendancePage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg"
-                        style={{ background: "rgba(14,51,38,0.08)", color: "#0e3326" }}>
+                        style={{ background: "rgba(201,168,76,0.12)", color: "#b98a2e" }}>
                         {course.code}
                       </span>
                       <span className="text-[12px] text-slate-500 truncate">{course.name}</span>
@@ -534,7 +534,7 @@ export default function AttendancePage() {
               <button key={id} onClick={() => setCourseFilter(id)}
                 className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all active:scale-[0.97]"
                 style={active
-                  ? { background: "linear-gradient(135deg, #0e3326, #175c3a)", color: "#fff" }
+                  ? { background: "linear-gradient(135deg, #b98a2e, #a6731d)", color: "#fff" }
                   : { background: "#fff", color: "#64748b", border: "1px solid #e8e4da" }}>
                 {label}
               </button>
@@ -551,7 +551,7 @@ export default function AttendancePage() {
       ) : sorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-            style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+            style={{ background: "linear-gradient(135deg, #b98a2e, #a6731d)" }}>
             <ClipboardList size={28} className="text-white/70" />
           </div>
           <p className="font-semibold text-slate-600">No attendance records yet</p>
@@ -565,7 +565,7 @@ export default function AttendancePage() {
           {personalCourses.length > 0 && (
             <button onClick={() => setShowModal(true)}
               className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
-              style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+              style={{ background: "linear-gradient(135deg, #b98a2e, #a6731d)" }}>
               <Plus size={15} /> Mark First Attendance
             </button>
           )}
@@ -601,7 +601,7 @@ export default function AttendancePage() {
                           <div className="flex items-center gap-2">
                             {course && (
                               <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
-                                style={{ background: "rgba(14,51,38,0.08)", color: "#0e3326" }}>
+                                style={{ background: "rgba(201,168,76,0.12)", color: "#b98a2e" }}>
                                 {course.code}
                               </span>
                             )}
@@ -716,7 +716,7 @@ export default function AttendancePage() {
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                  style={{ background: "linear-gradient(135deg, #b98a2e, #a6731d)" }}>
                   {saving
                     ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     : "Save"}
@@ -790,7 +790,7 @@ export default function AttendancePage() {
                             <input type="number" min="0" max="50"
                               value={val}
                               onChange={e => updateCourseLimit(c.id, e.target.value)}
-                              className="w-14 px-2 py-1.5 rounded-lg border border-[#e8e4da] text-[13px] font-semibold text-center outline-none focus:border-[#0e3326] bg-white transition-all" />
+                              className="w-14 px-2 py-1.5 rounded-lg border border-[#e8e4da] text-[13px] font-semibold text-center outline-none focus:border-[#b98a2e] bg-white transition-all" />
                             <span className="text-[11px] text-slate-400">abs.</span>
                             {isCustom && (
                               <button onClick={() => setSettingsForm(p => {
@@ -831,7 +831,7 @@ export default function AttendancePage() {
                 </button>
                 <button onClick={saveSettings}
                   className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97]"
-                  style={{ background: "linear-gradient(135deg, #0e3326, #175c3a)" }}>
+                  style={{ background: "linear-gradient(135deg, #b98a2e, #a6731d)" }}>
                   Save
                 </button>
               </div>

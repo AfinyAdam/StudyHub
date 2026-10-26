@@ -15,10 +15,10 @@ const messaging = firebase.messaging();
 // Handle background push messages
 messaging.onBackgroundMessage(payload => {
   const { title, body, icon } = payload.notification ?? {};
-  self.registration.showNotification(title ?? "UniLife", {
+  self.registration.showNotification(title ?? "StudyHub", {
     body:  body  ?? "",
-    icon:  icon  ?? "/favicon.ico",
-    badge: "/favicon.ico",
+    icon:  icon  ?? "/studyhub-mark-transparent.png",
+    badge: "/studyhub-mark-transparent.png",
     tag:   payload.data?.taskId ?? "unilife-deadline",
     data:  { url: "/tasks" },
   });
